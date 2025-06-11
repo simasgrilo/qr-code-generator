@@ -1,0 +1,1 @@
+from .QRCodeInputAnalyzer import QRCodeAnalyzer

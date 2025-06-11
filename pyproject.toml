@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "qr-code-generator"
+version = "0.1.0"
+description = "A QR code generator based on John Crickett's coding challenges proposal, following the specification in ISO/IEC 18004:2015"
+authors = ["Erick <simasgrilo86@gmail.com>"]
+readme = "README.md"
+packages = [{include = "qr_code_generator"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
