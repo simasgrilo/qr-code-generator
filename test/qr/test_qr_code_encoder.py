@@ -25,3 +25,8 @@ class TestQRCodeEncoder(unittest.TestCase):
         """Test encoding alphanumeric input."""
         result = self._encoder.encode_alphanumeric("AC-42", QRCodeEncoder.get_char_count_indicator("ALPHANUMERIC"), QRCodeEncoder.get_mode_indicator("ALPHANUMERIC"))
         self.assertEqual(result, b'0011100111011100111001000010')
+        
+    def test_encode_byte(self):
+        """Test encoding byte input."""
+        result = self._encoder.encode_bytes("Hello, World!", QRCodeEncoder.get_char_count_indicator("BYTE"), QRCodeEncoder.get_mode_indicator("BYTE"))
+        self.assertEqual(result, b'0100100001100101011011000110110001101111')

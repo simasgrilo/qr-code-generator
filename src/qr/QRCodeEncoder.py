@@ -66,6 +66,7 @@ class QRCodeEncoder:
         Returs:
             bytes: result of the encoding process as bytes.
         """
+        pass
         
     def encode_numeric(self, input_str: str, char_count_indicator: int, mode_indicator: bytes) -> bytes:
         """
@@ -143,7 +144,7 @@ class QRCodeEncoder:
             group_data = input_str[index: min(index + 2, len(input_str))]
             # Get the value of the first and second characters in the group
             char_values = [-1,-1]
-            char_values[0] = self.get_encode_decode_table_alphanumeric(group_data[0]) 
+            char_values[0] = self.get_encode_decode_table_alphanumeric(group_data[0])
             if len(group_data) == 2:
                 char_values[1] = self.get_encode_decode_table_alphanumeric(group_data[1]) if len(group_data) > 1 else 0
             if char_values[1] != -1:
@@ -153,3 +154,29 @@ class QRCodeEncoder:
                 encoded_data.append(bin(char_values[0])[2:].zfill(6))
             index += 2
         return bytes("".join(encoded_data), encoding='utf-8')
+    
+    
+    def encode_bytes(self, input_str: str, char_count_indicator: int, mode_indicator: bytes ) -> bytes:
+        """
+        Encode byte data. See section 7.4.5. of ISO for details.
+        Note that this encoding follows hte same standard as in ISO/IEC 8859-1, which subsumes ascii encoding.
+        We can use the currently encoding table to map the byte to the character.
+        Each character is encoded as an 8-bit binary number.
+        Args:
+            input_str (str): Byte data to encode.
+            char_count_indicator (int): Character count indicator for byte mode.
+            mode_indicator (bytes): Mode indicator for byte mode.
+        
+        Returns:
+            bytes: Encoded byte data as bytes.
+        """
+        if char_count_indicator != self.get_char_count_indicator("BYTE"):
+            raise ValueError("Invalid character count indicator for byte encoding.")
+        if mode_indicator != self.get_mode_indicator("BYTE"):
+            raise ValueError("Invalid mode indicator for byte encoding.")
+        encoded_data = []
+        for char in input_str:
+            encoded_data.append(bin(ord(char))[2:].zfill(8))
+        input_length = bytes(bin(len(input_str))[2::], encoding='utf-8')
+        bits_char_count_indicator = bytes(bin(char_count_indicator)[2::].zfill(char_count_indicator), encoding='utf-8')
+        return mode_indicator + bits_char_count_indicator + input_length + bytes("".join(encoded_data), encoding='utf-8')
