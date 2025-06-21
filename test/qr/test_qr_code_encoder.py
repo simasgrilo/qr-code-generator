@@ -30,3 +30,13 @@ class TestQRCodeEncoder(unittest.TestCase):
         """Test encoding byte input."""
         result = self._encoder.encode_bytes("Hello, World!", QRCodeEncoder.get_char_count_indicator("BYTE"), QRCodeEncoder.get_mode_indicator("BYTE"))
         self.assertEqual(result, b'0100100001100101011011000110110001101111')
+        
+    def test_encode_kanji_single_char(self):
+        """Test the encoding of a single kanji character input"""
+        result = self._encoder.encode_kanji("点".encode("shift-jis"), QRCodeEncoder.get_char_count_indicator("KANJI"), QRCodeEncoder.get_mode_indicator("KANJI"))
+        self.assertEqual(result, b'100010000110110011111')
+        
+    def test_encode_kanji_multiple_char(self):
+        """Test the encoding of more than one Shift-JIS char"""
+        result = self._encoder.encode_kanji("こんにちは".encode("shift-jis"), QRCodeEncoder.get_char_count_indicator("KANJI"), QRCodeEncoder.get_mode_indicator("KANJI"))
+        self.assertEqual(result, b'1000100010001010000011010001000001100100000100110001010011111001000001101')

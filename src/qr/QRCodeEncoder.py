@@ -14,7 +14,7 @@ class QRCodeEncoder:
             level (QRErrorCorrectionLevel): The error correction level to set.
         """
         self.error_correction_level = level
-        
+
     @staticmethod
     def get_mode_indicator(mode: str) -> bin:
         """
@@ -56,7 +56,7 @@ class QRCodeEncoder:
         return bit_count.get(mode.upper(), None)
     
     
-    def encode_input(self, input: str) -> bytes:
+    def encode_input(self, input_str: str) -> bytes:
         """
         Encode the input string following the procedure in ISO 18004:2015.
         
@@ -180,3 +180,62 @@ class QRCodeEncoder:
         input_length = bytes(bin(len(input_str))[2::], encoding='utf-8')
         bits_char_count_indicator = bytes(bin(char_count_indicator)[2::].zfill(char_count_indicator), encoding='utf-8')
         return mode_indicator + bits_char_count_indicator + input_length + bytes("".join(encoded_data), encoding='utf-8')
+
+
+    def encode_kanji(self, input_str: str, char_count_indicator: int, mode_indicator: bytes):
+        """
+        Implementation of the algorithmic encoding of Shift-JIS characters as in Section 7.4.5 of ISO 18004/2015. We need to make a series of calculations depending of the
+        character:
+        1) For characters with Shift JIS values from 0x8140 to 0x9FFC:
+            - Subtract 0x8140 from Shift JIS value
+            - Multiply the MSB of the result by 0xC0
+            - Add LSB of the result to the product above
+            - convert the result to a 13-bit binary string
+        2) For characters with Shift JIS values from 0xE040 to 0xEBBF:
+            - Subtract 0xC140 from Shift JIS value
+            - Multiply most significant byte of result by 0xCO
+            - Add Least significant byte to product from the product above
+            - convert the result to a 13-bit binary string
+        after doing this to all the characters, prefix the string withthe character count indicator and mode indicator.
+        Args:
+            input_str (str): the input Kanji string
+            char_count_indicator (int): The character count indicator for the corresponding mode (as per ISO)
+            mode_indicator (bytes): The mode indicator for the corresponding encoding mode (as per ISO)
+
+        Raises:
+            ValueError: if the character is not in the correct Shift-JIS format or it cannot be decoded as a character within the Shift-JIS two-byte representation range
+
+        Returns:
+            the encoded string as in Section 
+        """
+        LOWER_BOUND_BYTE_1 = 0x8140
+        UPPER_BOUND_BYTE_1 = 0x9ffc
+        LOWER_BOUND_BYTE_2 = 0xe040
+        UPPER_BOUND_BYTE_2 = 0xebbf
+        BASELINE_BOUND_2 = 0xc040
+        MULTIPLIER = 0xc0
+        encoded_data = []
+        if len(input_str) % 2:
+            raise ValueError("Invalid string format")
+        for index in range(0, len(input_str), 2):
+            hex_bytes = int(input_str[index:index + 2].hex(), 16)
+            intermediate_sub = 0
+            if not(hex_bytes >= LOWER_BOUND_BYTE_1 and hex_bytes <= UPPER_BOUND_BYTE_1) and not(hex_bytes >= LOWER_BOUND_BYTE_2 and hex_bytes <= UPPER_BOUND_BYTE_2):
+                raise ValueError("Invalid string format")
+            if LOWER_BOUND_BYTE_1 <= hex_bytes <= UPPER_BOUND_BYTE_1: 
+                intermediate_sub = hex(hex_bytes - LOWER_BOUND_BYTE_1)[2:] # get rid of the 0x from the str representation
+            elif LOWER_BOUND_BYTE_2 <= hex_bytes <= UPPER_BOUND_BYTE_2:
+                intermediate_sub = hex(hex_bytes - BASELINE_BOUND_2)[2:]
+            intermediate_sub_msb = hex(int(intermediate_sub[0:2], 16))
+            intermediate_sub_lsb = hex(int(intermediate_sub[2:4], 16))
+            most_sig_byte_mult = hex(int(intermediate_sub_msb, 16) * MULTIPLIER)
+            add_lsb_to_mult = bin(int(most_sig_byte_mult, 16) + int(intermediate_sub_lsb, 16))[2:]
+            converted_bin_represent = bytes(add_lsb_to_mult.zfill(13), encoding='utf-8')
+            encoded_data.append(converted_bin_represent)
+        bin_char_count_indicator = bytes(bin(char_count_indicator)[2:], encoding='utf-8')
+        bin_encoded_data = bytes()
+        for data_part in encoded_data:
+            bin_encoded_data += data_part
+        return bin_char_count_indicator + mode_indicator + bin_encoded_data
+        
+    
