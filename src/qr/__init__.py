@@ -1,2 +1,2 @@
-from .QRCodeInputAnalyzer import QRCodeAnalyzer
+from .QRCodeInputAnalyzer import QRCodeInputAnalyzer
 from .QRCodeEncoder import QRCodeEncoder

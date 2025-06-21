@@ -1,12 +1,13 @@
 """ module to determine the error correction level of a QR code """
 
 from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
+from src.qr.QRCodeInputAnalyzer import QRCodeInputAnalyzer
 
 class QRCodeEncoder:
     """
     QR Code encoder - implemetation of the algorithmic steps described in section 7.4.2 to 7.4.6 as per ISO 18004:2015 standard.
     """
-    def __init__(self, level: QRErrorCorrectionLevel):
+    def __init__(self, level: QRErrorCorrectionLevel, analyzer: QRCodeInputAnalyzer):
         """
         Initialize the QRErrorCorrection with a specific error correction level.
         
@@ -14,6 +15,7 @@ class QRCodeEncoder:
             level (QRErrorCorrectionLevel): The error correction level to set.
         """
         self.error_correction_level = level
+        self.analyzer = analyzer
 
     @staticmethod
     def get_mode_indicator(mode: str) -> bin:
@@ -66,8 +68,21 @@ class QRCodeEncoder:
         Returs:
             bytes: result of the encoding process as bytes.
         """
-        pass
-        
+        encoding_mode = self.analyzer.analyse(input_str).upper()
+        encoding_char_count_indicator = self.get_char_count_indicator(encoding_mode)
+        mode_indicator = self.get_mode_indicator(encoding_mode)
+        match encoding_mode:
+            case 'NUMERIC':
+                return self.encode_numeric(input_str, encoding_char_count_indicator, mode_indicator)
+            case 'ALPHANUMERIC':
+                return self.encode_alphanumeric(input_str, encoding_char_count_indicator, mode_indicator)
+            case 'BYTE':
+                return self.encode_bytes(input_str, encoding_char_count_indicator, mode_indicator)
+            case 'KANJI':
+                return self.encode_kanji(input_str.encode(encoding='shift-jis'), encoding_char_count_indicator, mode_indicator)
+            case _:
+                raise ValueError(f"Unknown format of string {input_str}. Please correct your input and try again")
+
     def encode_numeric(self, input_str: str, char_count_indicator: int, mode_indicator: bytes) -> bytes:
         """
         Encode numeric data. See section 7.4.3. of ISO for details
@@ -216,7 +231,7 @@ class QRCodeEncoder:
         MULTIPLIER = 0xc0
         encoded_data = []
         if len(input_str) % 2:
-            raise ValueError("Invalid string format")
+            raise ValueError("Invalid string format. Kanji encoding require two bytes per each character. Perhaps you forgot to encode as shift-jis?")
         for index in range(0, len(input_str), 2):
             hex_bytes = int(input_str[index:index + 2].hex(), 16)
             intermediate_sub = 0
@@ -237,5 +252,3 @@ class QRCodeEncoder:
         for data_part in encoded_data:
             bin_encoded_data += data_part
         return bin_char_count_indicator + mode_indicator + bin_encoded_data
-        
-    
