@@ -7,13 +7,14 @@ class QRCodeEncoder:
     """
     QR Code encoder - implemetation of the algorithmic steps described in section 7.4.2 to 7.4.6 as per ISO 18004:2015 standard.
     """
-    def __init__(self, level: QRErrorCorrectionLevel, analyzer: QRCodeInputAnalyzer):
+    def __init__(self, version: int, level: QRErrorCorrectionLevel, analyzer: QRCodeInputAnalyzer):
         """
-        Initialize the QRErrorCorrection with a specific error correction level.
+        Initialize the QRErrorCorrection with a specific error correction level for a specific version
         
         Args:
             level (QRErrorCorrectionLevel): The error correction level to set.
         """
+        self.version = version
         self.error_correction_level = level
         self.analyzer = analyzer
 
@@ -68,6 +69,23 @@ class QRCodeEncoder:
         Returs:
             bytes: result of the encoding process as bytes.
         """
+
+        encoded_data = self.encode_data_into_bit_stream(input_str)
+        final_encoded_data = self._add_terminator_and_padding(encoded_data)
+        return final_encoded_data
+
+    def encode_data_into_bit_stream(self, input_str: str) -> bytes:
+        """Encodes only the bit stream part (sections 7.4.2 to 7.4.7) of the characters as in ISO 18004:2015
+           This only support modes BYTE, NUMERIC, ALPHANUMERIC and KANJI.
+        Args:
+            input_str (str): the data itself to be encoded
+
+        Raises:
+            ValueError: if the data is not in a format currently supported by the implementation
+
+        Returns:
+            bytes: the bit stream encoded following the ISO rules.
+        """
         encoding_mode = self.analyzer.analyse(input_str).upper()
         encoding_char_count_indicator = self.get_char_count_indicator(encoding_mode)
         mode_indicator = self.get_mode_indicator(encoding_mode)
@@ -112,7 +130,6 @@ class QRCodeEncoder:
                 padding = '0' * max(0, (4 - len(curr_digit_group)))
             bytes_array.append(padding + curr_digit_group)
             index += 3
-        print(bytes_array)
         bytes_array = bytes("".join(bytes_array), encoding='utf-8')
         binary_count = bin(len(input_str))
         padding = "0" * (char_count_indicator - len(binary_count))
@@ -252,3 +269,46 @@ class QRCodeEncoder:
         for data_part in encoded_data:
             bin_encoded_data += data_part
         return bin_char_count_indicator + mode_indicator + bin_encoded_data
+    
+    def _add_terminator_and_padding(self, encoded_input: bytes) -> bytes:
+        """
+        Adds the specified terminator for the encoded data (See Table 2 of ISO). For modes different that any micro QR code (M1, M2, M3 and M4),
+        the terminator is always 0000. This needs to fit 4 bytes if the data length is smaller than the size, or else truncated. For more information, check sections
+        7.4.9 and 7.4.10 of ISO 18004.
+        note: in the ISO, a codeword is a byte for versions 1 to 40 (see section 7.4.10)
+        The algorithm is as follows:
+        1) position the codeword 0000 to fit the last byte (it needs to have 8 characters)
+        2) if even after adding up to 0000, add more 000 until it is a complete byte -> 4 bits + extra padding to totalize a byte after the least
+           significant bit of the data stream
+        3) if after adding the padding zeroes it still does not fit the number of codewords, add bytes 11101100 and 00010001 alternatively 
+
+        Args:
+            encoded_input (bytes): _description_
+
+        Returns:
+            bytes: _description_
+        """
+        codeword_per_version_and_ecl = self.error_correction_level.get_numbers_of_bits_per_codewords(self.version)
+        remainder_of_zeroes = codeword_per_version_and_ecl - len(encoded_input)
+        transformed_encoded_input = encoded_input
+        terminator_zeroes = bytes()
+        if 0 < remainder_of_zeroes <= 4:
+            # 1) add the codeword zeroes, up to 0000
+            terminator_zeroes = bytes("".join(["0" for _ in range(remainder_of_zeroes)]), encoding="utf-8")
+        transformed_encoded_input += terminator_zeroes
+        # 2) add the remainder of padding zeroes to fit a whole byte:
+        remainder_for_whole_byte = 8 - (len(transformed_encoded_input) % 8)
+        transformed_encoded_input += bytes("".join(["0" for _ in range(remainder_for_whole_byte)]), encoding="utf-8")
+        # 3) add the pad codewords if required:
+        PAD_CODEWORD_0 = bytes('11101100', encoding='utf-8')
+        PAD_CODEWORD_1 = bytes('00010001', encoding='utf-8')
+        counter = 0
+        while len(transformed_encoded_input) < codeword_per_version_and_ecl:
+            if counter % 2 == 0:
+                transformed_encoded_input += PAD_CODEWORD_0
+            else:
+                transformed_encoded_input += PAD_CODEWORD_1
+            counter += 1
+        return transformed_encoded_input
+    
+print(QRCodeEncoder(4, QRErrorCorrectionLevel.L, QRCodeInputAnalyzer()).encode_input("01234567"))

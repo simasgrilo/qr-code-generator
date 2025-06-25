@@ -10,7 +10,7 @@ class TestQRCodeEncoder(unittest.TestCase):
        This class will test all the four implemented modalities to encode data for QR codes.
     """
     def setUp(self):
-        self._encoder = QRCodeEncoder(QRErrorCorrectionLevel.L, QRCodeInputAnalyzer())
+        self._encoder = QRCodeEncoder(4, QRErrorCorrectionLevel.L, QRCodeInputAnalyzer())
         
     def test_encode_numeric_is_not_none(self):
         """Test encoding numeric input."""
@@ -44,9 +44,17 @@ class TestQRCodeEncoder(unittest.TestCase):
         
     def test_encode_decider(self):
         """ a Single test step to test the encoder itself for each of the modes:"""
-        result = self._encoder.encode_input("AC-42")
+        result = self._encoder.encode_data_into_bit_stream("AC-42")
         self.assertEqual(result, b'0011100111011100111001000010')
-        result = self._encoder.encode_input("01234567")
+        result = self._encoder.encode_data_into_bit_stream("01234567")
         self.assertEqual(result, b'000100001000000000110001010110011000011')
-        result = self._encoder.encode_input("点")
+        result = self._encoder.encode_data_into_bit_stream("点")
         self.assertEqual(result, b'100010000110110011111')
+        
+    def test_encode_string_per_iso_standards(self):
+        """ Test the full encoding functionality for codewords instead of single bit streams as in sections 7.4.2 to 7.4.7, and the teriminator / pad codewords
+            from Sections 7.4.9 and 7.4.10.
+            Note that the version being 4 and the Error Correction Level is L, we have 80 codewords which results in the final encoded string having 640 bits.
+        """
+        result = self._encoder.encode_input("01234567")
+        self.assertEqual(result, b'0001000010000000001100010101100110000110111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100')

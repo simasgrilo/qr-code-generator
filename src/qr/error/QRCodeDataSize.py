@@ -2,7 +2,7 @@
 
 
 import enum
-from QRErrorCorrectionLevel import QRErrorCorrectionLevel
+from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
 
 class QRCodeDataSize(enum.Enum):
     """
