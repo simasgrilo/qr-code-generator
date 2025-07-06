@@ -1,5 +1,5 @@
 import enum
-
+from src.qr.error.QRCodeCodewordBlock import QRCodeCodewordBlock as Block
 
 class QRErrorCorrectionLevel(enum.Enum):
     """
@@ -14,7 +14,7 @@ class QRErrorCorrectionLevel(enum.Enum):
         return self.value
     
     
-    def get_number_of_codewords(self, version: int):
+    def get_number_of_data_codewords(self, version: int):
         """
         Method to retrieve the codeword per error correction level
         Args:
@@ -73,4 +73,134 @@ class QRErrorCorrectionLevel(enum.Enum):
         Returns:
             int: _description_
         """
-        return self.get_number_of_codewords(version) * 8
+        return self.get_number_of_data_codewords(version) * 8
+    
+    def get_total_number_of_codewords(self, version: int):
+        """Method to implement the retrieval of the total of codewords"
+
+        Args:
+            version (int): QR code version 
+        """
+        total_codewords = {
+            1: 26,
+            2: 44,
+            3: 70,
+            4: 100,
+            5: 134,
+            6: 172,
+            7: 196,
+            8: 242,
+            9: 292,
+            10: 346,
+            11: 404,
+            12: 466,
+            13: 532,
+            14: 581,
+            15: 655,
+            16: 733,
+            17: 815,
+            18: 901,
+            19: 991,
+            20: 1085,
+            21: 1156,
+            22: 1258,
+            23: 1364,
+            24: 1474,
+            25: 1588,
+            26: 1706,
+            27: 1828,
+            28: 1921,
+            29: 2051,
+            30: 2185,
+            31: 2323,
+            32: 2465,
+            33: 2611,
+            34: 2761,
+            35: 2876,
+            36: 3034,
+            37: 3196,
+            38: 3362,
+            39: 3532,
+            40: 3706
+        }
+        return total_codewords[version]
+        
+    def get_number_of_error_correction_codewords(self, version: int):
+        """Method to retrieve the number of error correction codewords. there are two possibilites to do so:
+            1) encode table 9 from ISO, or
+            2) derive from the total number of codewords and the number of data codewords
+        Args:
+            version (int): QR code version
+        """
+        return self.get_total_number_of_codewords(version) - self.get_number_of_data_codewords(version)
+    
+    def get_number_and_struct_of_error_correction_blocks(self, version: int):
+        """Method to retrieve the number of error correction blocks (ecb) per QR Code version. According to the ISO, in table 9, the last two columns
+           define the structure of how many codewords and how they are distributed per number of blocks.
+           Table 9 is modelled as the dictionary below with the following structure:
+           {
+               version: {
+                   <error_correction_level>: [(<no_of_blocks>, (<total_codewords_per_block>, <data_codewords_per_block>, <error_correction_capacity>))]
+               }
+           }
+           This means that for a specific version and error correction level, one can retrieve how many blocks we need to have and each block's structure. From the ISO, 
+           for a given pair (version, error correction level) there will be at most two groups. Therefore, the modelling of the dictionary below will have values with an array
+           of length at most two to hold the information of how many blocks and their corresponding structure.
+           As an example:
+
+            4: {"L": [(1, (100,80,10))], "M": [(2, (50,32,9))], "Q": [(2, (50,24,13))], "H": [(4, (44,16,14))]},
+            for version 4, error correction level M we'll have two blocks, where each block will have 50 codewords, 32 of data and 18 for error. adding everything we have:
+            100 codewords, 64 data codewords and 36 error correction codewords, just like the ISO.
+
+        Args:
+            version (int): QR code version
+        """
+        #TODO THIS IS NOT COMPLETE!!!
+        if version > 5:
+            raise ValueError(f'{version} still not implemented. Please contact the system administratior for more clarifications')
+        blocks_and_ecc_per_block = {
+            1: {"L": [(1, Block(26,19,2))], "M": [(1, Block(26,16,4))], "Q": [(1, Block(26,13,6))], "H": [(1, Block(26,9,8))]},
+            2: {"L": [(1, Block(44,34,4))], "M": [(1, Block(44,28,8))], "Q": [(1, Block(44,22,11))], "H": [(1, Block(44,16,14))]},
+            3: {"L": [(1, Block(70,55,7))], "M": [(1, Block(44,28,8))], "Q": [(1, Block(44,22,11))], "H": [(1, Block(44,16,14))]},
+            4: {"L": [(1, Block(100,80,10))], "M": [(2, Block(50,32,9))], "Q": [(2, Block(50,24,13))], "H": [(4, Block(44,16,14))]},
+            5: {"L": [(1, Block(134,108,13))], 
+                "M": [(2, Block(67,43,12))], 
+                "Q": [(2, Block(33,15,9)), (2, Block(34,16,9))], 
+                "H": [(2, Block(33,11,9)), (2, Block(34,12,9))]},
+            6: 172,
+            7: 196,
+            8: 242,
+            9: 292,
+            10: 346,
+            11: 404,
+            12: 466,
+            13: 532,
+            14: 581,
+            15: 655,
+            16: 733,
+            17: 815,
+            18: 901,
+            19: 991,
+            20: 1085,
+            21: 1156,
+            22: 1258,
+            23: 1364,
+            24: 1474,
+            25: 1588,
+            26: 1706,
+            27: 1828,
+            28: 1921,
+            29: 2051,
+            30: 2185,
+            31: 2323,
+            32: 2465,
+            33: 2611,
+            34: 2761,
+            35: 2876,
+            36: 3034,
+            37: 3196,
+            38: 3362,
+            39: 3532,
+            40: 3706
+        }
+        return blocks_and_ecc_per_block[version][str(self)]
