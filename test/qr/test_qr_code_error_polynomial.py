@@ -25,6 +25,5 @@ class TestQRCodeErrorCodewordPolynomial(TestCase):
         
     def test_create_more_factors_generator_polynomial(self):
         polynomial = PolynomialOperations.generate_generator_polynomial(18)
-        self.assertEqual(str(polynomial), """a^0 * x^18 + a^215 * x^17 + a^234 * x^16 + a^158 * x^15 + a^94 * x^14 + a^184 * x^13 + 
-                                             a^97 * x^12 + a^118 * x^11 + a^170 * x^10 + a^79 * x^9 + a^187 * x^8 + a^152 * x^7 + a^148 * x^6 + a^252 * x^5 + 
-                                             a^179 * x^4 + a^5 * x^3 + a^98 * x^2 + a^96 * x^1 + a^153 * x^0""")
+        self.assertEqual(str(polynomial), """a^0 * x^18 + a^215 * x^17 + a^234 * x^16 + a^158 * x^15 + a^94 * x^14 + a^184 * x^13 + a^97 * x^12 + a^118 * x^11 + a^170 * x^10 + a^79 * x^9 + a^187 * x^8 + a^152 * x^7 + a^148 * x^6 + a^252 * x^5 + a^179 * x^4 + a^5 * x^3 + a^98 * x^2 + a^96 * x^1 + a^153 * x^0""")
+        
