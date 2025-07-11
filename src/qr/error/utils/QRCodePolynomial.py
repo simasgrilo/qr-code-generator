@@ -5,7 +5,7 @@
 import math
 from collections import defaultdict
 from typing import List
-
+from abc import ABC, abstractmethod
 
 class Alpha:
     """Class modelling the alpha notation for Galois Field GF(256)
@@ -83,27 +83,27 @@ class Term:
        This class needs to have both the alpha exponent and the x exponent
     """
 
-    def __init__(self, alpha_exponent: Alpha, x_exponent: int):
-        if not isinstance(alpha_exponent, Alpha) or alpha_exponent.get_exponent() < 0 or x_exponent < 0:
-            raise ValueError(f"Illegal values for eiher {alpha_exponent} or {x_exponent}")
-        self._alpha_exponent = alpha_exponent
+    def __init__(self, coefficient: Alpha | int, x_exponent: int):
+        if (not isinstance(coefficient, int)) and (not isinstance(coefficient, Alpha) or coefficient.get_exponent() < 0 or x_exponent < 0):
+            raise ValueError(f"Illegal values for eiher {coefficient} or {x_exponent}")
+        self.coefficient = coefficient
         self._x_exponent = x_exponent
 
     def __str__(self):
-        return f'{str(self._alpha_exponent)} * x^{self._x_exponent}'
+        return f'{str(self.coefficient)} * x^{self._x_exponent}'
 
-    def get_alpha_exponent(self):
-        return self._alpha_exponent
+    def get_coefficient(self):
+        return self.coefficient
 
     def get_x_exponent(self):
         return self._x_exponent
 
-class Polynomial:
-    """Class to model a Polynomial as a list of coefficients of the form Alpha(x), 3).
-       this class exclusively models polynomials of form a^n * x^n + a^(n - 1) * x^(n - 1)... (single variable)
-       This is a special Polynomial to model only alpha
-       Note: THE SEMANTICS OF EACH COEFFICIENT OF THIS CLASS WILL BE AUTOMATICALLY CASTED TO ALPHA TYPE.
+class Polynomial(ABC):
+    """Abstract class to model polynomials. In our scenario, polynomials can be in integer notation or using alpha notation to denote each coefficient
+       of the polynomial.
     """
+    _coefficients: None
+    
     def __init__(self, *args):
         """Allows the construction of a polynomial using either a list of coefficients or scalars.
            the following possible parameters will be accepted by the constructor:
@@ -122,24 +122,58 @@ class Polynomial:
         else:
             coefficients = []
             for elem in args:
-                if not isinstance(elem, Term):
-                    raise ValueError(f"{elem} is not a valid coefficient for a Polynomial in GF(255)")
+                self._validate_single_coefficient(elem)
                 coefficients.append(elem)
             self._coefficients = coefficients
-
-    def __str__(self):
-        """Pretty printer for printing a polynomial in a friendly format: a^i * x^n + a^j * x^(n - 1) + ... + a^z * x^0
-        """
-        return " + ".join([str(term) for term in self._coefficients])
-        
+            
+    @abstractmethod
+    def _validate_single_coefficient(self, elem):
+        pass
+    
     def _validate_coefficient_list(self, coefficient_list: List[Term]):
         for term in coefficient_list:
             if not isinstance(term, Term):
                 raise ValueError(f'{term} has incorrect type. It should be an instance of Term, but it is an instance of {type(term)}')
+    
+    def __str__(self):
+        """Pretty printer for printing a polynomial in a friendly format: a^i * x^n + a^j * x^(n - 1) + ... + a^z * x^0
         
-
+        Returns:
+            (str) : a string containing all terms that are part of the coefficient
+        """
+        return " + ".join([str(term) for term in self._coefficients])
+    
     def get_coefficients(self):
+        """Method to retrieve a list of coefficients of the polynomial
+        
+        Returns:
+            self._coefficients (List[Alpha | int]): List of coefficients of the polynomial. The exact type depends on the concrete class
+        """
         return self._coefficients
+
+class AlphaPolynomial(Polynomial):
+    """Class to model a Polynomial as a list of coefficients of the form Alpha(x), 3).
+       this class exclusively models polynomials of form a^n * x^n + a^(n - 1) * x^(n - 1)... (single variable)
+       This is a special Polynomial to model only alpha
+       Note: THE SEMANTICS OF EACH COEFFICIENT OF THIS CLASS WILL BE AUTOMATICALLY CASTED TO ALPHA TYPE.
+    """
+
+    def _validate_single_coefficient(self, elem: Term):
+        if not isinstance(elem, Term):
+            raise ValueError(f"{elem} is not a valid coefficient for a Polynomial in GF(255)")
+
+class IntPolynomial(Polynomial):
+    """Class to model an integer polynomial (i.e., integer coefficients), complementing the Alpha polynomial implementation
+       This will be further used in the data codeword creation.
+    """
+    def _validate_coefficient_list(self, coefficient_list: List[Term]):
+        for term in coefficient_list:
+            if not isinstance(term, Term):
+                raise ValueError(f'{term} has incorrect type. It should be an instance of Term, but it is an instance of {type(term)}')
+
+    def _validate_single_coefficient(self, elem: int):
+        if not isinstance(elem, int):
+            raise ValueError(f"{elem} is not a valid integer to form a data codeword")
 
 class PolynomialOperations:
     """Class to model all polynomial opreations required in section 7.5.2 to create the error codewords based on the ISO Specification
@@ -147,10 +181,9 @@ class PolynomialOperations:
        and divide A by B using XOR to subtract when removing coefficients from the structure. The remainter is our codeword. 
        It is worth noting that these polynomials are subject to Galois field GF(256) and therefore some special properties apply, like the structures, the fact that 
        the prime modulo polynomial x^8 + x^4 + x^3 + x^2 + 1.
-       
        The range of operations of this class also includes getting the xor for every power of two in the galois field GF(256) with 100011101 (285)
     """
-    
+
     alpha_calculator = AlphaOperations()
 
     GF_255_PRIME_MODULUS_POLYNOMIAL = 285
@@ -158,12 +191,12 @@ class PolynomialOperations:
     GF_255_XOR_CACHE = {}
 
     @staticmethod
-    def divide(dividend: Polynomial, divisor: Polynomial):
+    def divide(dividend: AlphaPolynomial, divisor: AlphaPolynomial):
         #TODO: next error codeword step implementation
         pass
 
     @staticmethod
-    def multiply(polynomial_1: Polynomial, polynomial_2: Polynomial) -> Polynomial:
+    def multiply(polynomial_1: AlphaPolynomial, polynomial_2: AlphaPolynomial) -> AlphaPolynomial:
         """Algorithm to multiply two polinomials.
            it uses a hash to group the x exponents as the key, and all the coefficients that multiply each of these X's
            this effectively allows us to calculate the polynomial at the end by adding all the coefficients as soon as they are found
@@ -182,9 +215,9 @@ class PolynomialOperations:
         x_coefficients = defaultdict(list) # hash map of x coefficients to group alpha coefficients
         for term_p1 in polynomial_1_coefs:
             for term_p2 in polynomial_2_coefs:
-                coef_alpha_p1 = term_p1.get_alpha_exponent().get_exponent()
+                coef_alpha_p1 = term_p1.get_coefficient().get_exponent()
                 x_alpha_p1 =  term_p1.get_x_exponent()
-                coef_alpha_p2 = term_p2.get_alpha_exponent().get_exponent()
+                coef_alpha_p2 = term_p2.get_coefficient().get_exponent()
                 x_alpha_p2 = term_p2.get_x_exponent()
                 sum_alpha = coef_alpha_p1 + coef_alpha_p2
                 sum_x = x_alpha_p1 + x_alpha_p2
@@ -193,7 +226,7 @@ class PolynomialOperations:
         for key, value in x_coefficients.items():
             alpha_sum = PolynomialOperations._calculate_alpha_coefficient_sum(value)
             new_polynomial.append(Term(Alpha(alpha_sum), key))
-        return Polynomial(new_polynomial)
+        return AlphaPolynomial(new_polynomial)
 
     @staticmethod
     def _calculate_alpha_coefficient_sum(alpha_coefficients: List[int]) -> Alpha:
@@ -227,7 +260,7 @@ class PolynomialOperations:
             
 
     @staticmethod
-    def generate_generator_polynomial(n: int) -> Polynomial:
+    def generate_generator_polynomial(n: int) -> AlphaPolynomial:
         """Method to create the polynomial generators for n codewords as per the ISO standards
 
         Args:
@@ -236,8 +269,8 @@ class PolynomialOperations:
         Returns:
             Polynomial: a Polynomial of degree n to satisfy the conditions
         """
-        polynomial = Polynomial([Term(Alpha(0), 1), Term(Alpha(0), 0)]) # a0x1 + a0x0
+        polynomial = AlphaPolynomial([Term(Alpha(0), 1), Term(Alpha(0), 0)]) # a0x1 + a0x0
         for i in range(1, n):
-            next_polynomial = Polynomial([Term(Alpha(0), 1), Term(Alpha(i), 0)])
+            next_polynomial = AlphaPolynomial([Term(Alpha(0), 1), Term(Alpha(i), 0)])
             polynomial = PolynomialOperations.multiply(polynomial, next_polynomial)
         return polynomial
