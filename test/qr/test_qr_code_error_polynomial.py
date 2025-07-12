@@ -27,3 +27,9 @@ class TestQRCodeErrorCodewordPolynomial(TestCase):
     def test_int_polynomial_creation(self):
         polynomial = IntPolynomial([Term(2,1), Term(1,0)])
         self.assertEqual(str(polynomial), "2 * x^1 + 1 * x^0")
+        
+    def test_int_conversion(self):
+        int_polynomial = IntPolynomial([Term(1,2), Term(3, 1), Term(2, 0)])
+        alpha_polynomial = PolynomialOperations.convert_int_to_alpha(int_polynomial)
+        self.assertEqual(str(alpha_polynomial), 'a^0 * x^2 + a^25 * x^1 + a^1 * x^0')
+        print(int_polynomial)

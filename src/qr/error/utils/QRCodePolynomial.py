@@ -28,6 +28,7 @@ class AlphaOperations:
     """Class to model the Alpha Operations like Log and Antilog to determine exponent & integer based on the operation,
        but that does not belong to an Alpha instance itself.
     """
+    #TODO this class needs to be globally avalable for all classes that manipula this.
     _instance = None
     
     def __new__(cls):
@@ -69,15 +70,17 @@ class AlphaOperations:
         calculation_antilog_table = {}
         for key, value in self._log_table.items():
             calculation_antilog_table[value] = key
+        # fix: normalization of exponent to match 1 back to 0
+        calculation_antilog_table[1] = 0
         antilog_table = {}
         # the for below can be extinguished, but this is just for the sake of readability.
         for exponent in range(1, 256):
             antilog_table[exponent] = calculation_antilog_table[exponent]
         return antilog_table
-            
+
     def get_antilog_from_alpha(self, exponent: int):
         return self._antilog_table[exponent] if exponent > 0 else 0
-        
+
 class Term:
     """Class to model a term of the polynomial. 
        This class needs to have both the alpha exponent and the x exponent
@@ -102,8 +105,8 @@ class Polynomial(ABC):
     """Abstract class to model polynomials. In our scenario, polynomials can be in integer notation or using alpha notation to denote each coefficient
        of the polynomial.
     """
-    _coefficients: None
-    
+    coefficients: None
+
     def __init__(self, *args):
         """Allows the construction of a polynomial using either a list of coefficients or scalars.
            the following possible parameters will be accepted by the constructor:
@@ -116,20 +119,29 @@ class Polynomial(ABC):
             val = args[0]
             if isinstance(val, list):
                 self._validate_coefficient_list(val)
-                self._coefficients = val
+                self.coefficients = val
             elif isinstance(val, Term):
-                self._coefficients = [val]
+                self.coefficients = [val]
         else:
             coefficients = []
             for elem in args:
                 self._validate_single_coefficient(elem)
                 coefficients.append(elem)
-            self._coefficients = coefficients
+            self.coefficients = coefficients
             
+        
+    def get_coefficients(self):
+        """Method to retrieve a list of coefficients of the polynomial
+        
+        Returns:
+            self._coefficients (List[Alpha | int]): List of coefficients of the polynomial. The exact type depends on the concrete class
+        """
+        return self.coefficients
+
     @abstractmethod
     def _validate_single_coefficient(self, elem):
         pass
-    
+
     def _validate_coefficient_list(self, coefficient_list: List[Term]):
         for term in coefficient_list:
             if not isinstance(term, Term):
@@ -141,15 +153,7 @@ class Polynomial(ABC):
         Returns:
             (str) : a string containing all terms that are part of the coefficient
         """
-        return " + ".join([str(term) for term in self._coefficients])
-    
-    def get_coefficients(self):
-        """Method to retrieve a list of coefficients of the polynomial
-        
-        Returns:
-            self._coefficients (List[Alpha | int]): List of coefficients of the polynomial. The exact type depends on the concrete class
-        """
-        return self._coefficients
+        return " + ".join([str(term) for term in self.coefficients])
 
 class AlphaPolynomial(Polynomial):
     """Class to model a Polynomial as a list of coefficients of the form Alpha(x), 3).
@@ -166,10 +170,6 @@ class IntPolynomial(Polynomial):
     """Class to model an integer polynomial (i.e., integer coefficients), complementing the Alpha polynomial implementation
        This will be further used in the data codeword creation.
     """
-    def _validate_coefficient_list(self, coefficient_list: List[Term]):
-        for term in coefficient_list:
-            if not isinstance(term, Term):
-                raise ValueError(f'{term} has incorrect type. It should be an instance of Term, but it is an instance of {type(term)}')
 
     def _validate_single_coefficient(self, elem: int):
         if not isinstance(elem, int):
@@ -192,8 +192,19 @@ class PolynomialOperations:
 
     @staticmethod
     def divide(dividend: AlphaPolynomial, divisor: AlphaPolynomial):
-        #TODO: next error codeword step implementation
-        pass
+        """Long polynomial division in the mathematical sense. In the QR code ISO 18004,
+           this is required to create the error codewords as the remainder of the division of 
+           the data codeword polynomial by the generator polynomial.
+           The steps will follow the procedure required as follows:
+           1) convert an AlphaPolynomial's coefficients to integer to perform the division
+           2) instead of adding the resulting polynomial's coefficients, we will apply XOR as the operation in GF(255)
+
+        Args:
+            dividend (AlphaPolynomial): dividend of the operation. In this case, will be called with the data codeword polynomial
+            divisor (AlphaPolynomial): divisor of the operation. In this case, it will be called with the generator codeword polynomial.
+        """
+        if not isinstance(dividend, AlphaPolynomial) or isinstance(divisor, AlphaPolynomial):
+            raise ValueError("Polynomial division is only supported for AlphaPolynomial type")
 
     @staticmethod
     def multiply(polynomial_1: AlphaPolynomial, polynomial_2: AlphaPolynomial) -> AlphaPolynomial:
@@ -203,12 +214,14 @@ class PolynomialOperations:
            with the corresponding X.
 
         Args:
-            polynomial_1 (Polynomial): _description_
-            polynomial_2 (Polynomial): _description_
+            polynomial_1 (Polynomial): First term of multiplication
+            polynomial_2 (Polynomial): Second term of multiplication
 
         Returns:
             new_polynomial (Polynomial): The product of polynomial_1 with polynomial_2.
         """
+        if not isinstance(polynomial_1, AlphaPolynomial) or not isinstance(polynomial_2, AlphaPolynomial):
+            raise ValueError(f"Polynomials have invalid type. both must have type AlphaPolynomial but they have {type(polynomial_1)} and {type(polynomial_2)}")
         polynomial_1_coefs = polynomial_1.get_coefficients()
         polynomial_2_coefs = polynomial_2.get_coefficients()
         new_polynomial = []
@@ -274,3 +287,23 @@ class PolynomialOperations:
             next_polynomial = AlphaPolynomial([Term(Alpha(0), 1), Term(Alpha(i), 0)])
             polynomial = PolynomialOperations.multiply(polynomial, next_polynomial)
         return polynomial
+    
+    @staticmethod
+    def convert_int_to_alpha(int_polynomial: IntPolynomial) -> AlphaPolynomial:
+        """Method to convert an IntPolynomial to an AlphaPolynomial object. This will
+           be useful in the multiplication process part of the error codeword generation
+
+        Args:
+            int_polynomial (IntPolynomial): Polynomial with integer coefficients
+
+        Returns:
+            AlphaPolynomial: the same polynonial with alpha coefficients.
+        """
+        calculator = PolynomialOperations.alpha_calculator
+        coefficients = [ (term.get_coefficient(), term.get_x_exponent()) for term in int_polynomial.get_coefficients() ]
+        # create a list of terms with the converted alpha value (Int -> Alpha):
+        alpha_terms = [Term(Alpha(calculator.get_antilog_from_alpha(coefficient)), x_exponent) for coefficient, x_exponent in coefficients]
+        return AlphaPolynomial(alpha_terms)
+    
+int_polynomial = IntPolynomial([Term(1,2), Term(3, 1), Term(2, 0)])
+alpha_polynomial = PolynomialOperations.convert_int_to_alpha(int_polynomial)
