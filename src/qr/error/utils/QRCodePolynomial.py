@@ -128,8 +128,7 @@ class Polynomial(ABC):
                 self._validate_single_coefficient(elem)
                 coefficients.append(elem)
             self.coefficients = coefficients
-            
-        
+
     def get_coefficients(self):
         """Method to retrieve a list of coefficients of the polynomial
         
@@ -182,6 +181,7 @@ class PolynomialOperations:
        It is worth noting that these polynomials are subject to Galois field GF(256) and therefore some special properties apply, like the structures, the fact that 
        the prime modulo polynomial x^8 + x^4 + x^3 + x^2 + 1.
        The range of operations of this class also includes getting the xor for every power of two in the galois field GF(256) with 100011101 (285)
+       Note that this class does NOT Implement a general polynomial operations approach, but rather the operations with respect to GF(256)
     """
 
     alpha_calculator = AlphaOperations()
@@ -191,20 +191,103 @@ class PolynomialOperations:
     GF_255_XOR_CACHE = {}
 
     @staticmethod
-    def divide(dividend: AlphaPolynomial, divisor: AlphaPolynomial):
+    def divide(dividend: IntPolynomial, divisor: AlphaPolynomial):
         """Long polynomial division in the mathematical sense. In the QR code ISO 18004,
            this is required to create the error codewords as the remainder of the division of 
            the data codeword polynomial by the generator polynomial.
            The steps will follow the procedure required as follows:
-           1) convert an AlphaPolynomial's coefficients to integer to perform the division
-           2) instead of adding the resulting polynomial's coefficients, we will apply XOR as the operation in GF(255)
+           1) convert an IntPolynomial's coefficients to an AlphaPolynomial to integer to perform the multiplication step to get both polynomials with the
+              same coefficient for the lead term
+           2) Multiply the generator polynomial by the coefficient of lead term of the data codeword. Ex.: if the lead term is 50 * x^10, multiply the
+              generator polynomial by 50 in alpha notation (remember: alpha notation adds exponents and it's easier to maintain within the GF(255))
+           3) convert the data polynomial back to int notation
+           4) instead of adding the resulting polynomial's coefficients, we will apply XOR as the operation in GF(255)
+              at this moment, the lead term will have the same value in both coefficients. Having them XOR'd will 
+              give a coefficient of 0, effectively leading to the term being discarded
+            5) repeat this steps until there's no divisor left to perform the division. the remainder will be a set of codewords with exactly 
+               k error codewords, where k matches the number of error codewords specified in the ISO.
 
         Args:
-            dividend (AlphaPolynomial): dividend of the operation. In this case, will be called with the data codeword polynomial
-            divisor (AlphaPolynomial): divisor of the operation. In this case, it will be called with the generator codeword polynomial.
+            dividend (AlphaPolynomial): dividend of the operation. 
+                    In this case, will be called with the data codeword polynomial
+            divisor (AlphaPolynomial): divisor of the operation. 
+                    In this case, it will be called with the generator codeword polynomial.
         """
-        if not isinstance(dividend, AlphaPolynomial) or isinstance(divisor, AlphaPolynomial):
-            raise ValueError("Polynomial division is only supported for AlphaPolynomial type")
+        if not isinstance(dividend, IntPolynomial) or not isinstance(divisor, AlphaPolynomial):
+            raise ValueError("Polynomial division is only supported with \
+                             IntPolynomial and a AlphaPolynomial")
+        # Step 1a: Multiply the generator polynomial by the coefficient lead term
+        # of the message (data) polynomial (remember, long polynomial division)
+        # will want us to divide the data codeword by the generator polynomial, so the lead terms have the same coefficient (they need)
+        # we first convert the data codewords generated to a polynomial to perform long polynomial division:
+        # we will normalize the multiplication in Alpha notation so multiplying factors become a matter of adding
+        # # exponents of the coefficients
+        # this is required to normalize the exponent of the data codeword with the error codeword, to avoid the lead term to be too small
+        # during the division process. Shout out to Thonky for the heads up
+        # this is also noted in Section 7.5.2 of the ISO.
+        data_polynomial_alpha_notation = PolynomialOperations.convert_int_to_alpha(dividend)
+        error_codeword_max_exponent = len(divisor.get_coefficients()) - 1
+        x_exponent_normalizer = AlphaPolynomial(Term(Alpha(0),error_codeword_max_exponent))
+        data_codewords_polynomial = PolynomialOperations.multiply(data_polynomial_alpha_notation, x_exponent_normalizer)
+        divisor_data_codewords_qty = len(dividend.get_coefficients())
+        difference_generator_and_data_codewords = data_codewords_polynomial.get_coefficients()[0].get_x_exponent() - error_codeword_max_exponent
+        for division in range(0, divisor_data_codewords_qty):
+            # note: at each step of the division, the coefficients of the ORIGINAL generated polynomial will be used in the 
+            # NORMALIZED generator polynomial (i.e., the one multiplied by x^k, where k is the lead exponent of
+            # the message polynomial after x^n
+            divisor_generator_polynomial = PolynomialOperations.multiply(divisor, AlphaPolynomial(Term(Alpha(0), difference_generator_and_data_codewords - division)))
+            # at this point, both polynomials will have the same first n x exponents, where n is the number of error codewords.
+            # we can start the multiplication procedure which is part of the long polynomial divisor (so we can discard the lead term):
+            # the following step needs to be done number of data codewords times (with respect to Step 2)
+            # multiply the generator polynomial by the lead term in the data polynomial. both are already in Alpha notation at this point, so no problem:
+            data_codewords_polynomial_lead = data_codewords_polynomial.get_coefficients()[0]
+            lead_coefficient_alpha = data_codewords_polynomial_lead.get_coefficient()
+            divisor_generator_polynomial = PolynomialOperations.multiply(divisor_generator_polynomial, AlphaPolynomial(Term(lead_coefficient_alpha, 0)))
+            # convert both polynomials to integer
+            data_codewords_polynomial_int = PolynomialOperations.convert_alpha_to_int(data_codewords_polynomial)
+            divisor_generator_polynomial_int = PolynomialOperations.convert_alpha_to_int(divisor_generator_polynomial)
+            # XOR the result of this operation (Step 3)
+            # the XOR operation is done on a term by term basis, based on the x coefficient for each term.
+            xor_int_polynomials = PolynomialOperations.xor_int(data_codewords_polynomial_int, divisor_generator_polynomial_int)
+            data_codewords_polynomial = PolynomialOperations.convert_int_to_alpha(xor_int_polynomials)
+        return data_codewords_polynomial
+
+    @staticmethod
+    def xor_int(polynomial_1: IntPolynomial, polynomial_2: IntPolynomial) -> IntPolynomial:
+        """ Method to apply XOR to each of the exponents commom to both polynomials based on the x exponent value
+            This corresponds to the "addition" step of the dividend and the obtained polynomial by obtaining the highest power from the divisor
+            so they will add up to zero.
+            Note that the remainter of the biggest polynomial is not affected (i.e., same effect as XOR'ing the coefficient with 0)
+
+        Raises:
+            ValueError: if either polynomial_1 or polynomial_2 are not of type IntPolynomial
+
+        Returns:
+            xor_result (IntPolynomial): an IntPolynomial object as the result of the XOR operation for both polynomials.
+        """
+        index = 0
+        terms_polynomial_1 = polynomial_1.get_coefficients()
+        terms_polynomial_2 = polynomial_2.get_coefficients()
+        result = []
+        while index < len(terms_polynomial_1) and index < len(terms_polynomial_2):
+            term_polynomial_1 = terms_polynomial_1[index]
+            term_polynomial_2 = terms_polynomial_2[index]
+            xor_coefficients = term_polynomial_1.get_coefficient() ^ term_polynomial_2.get_coefficient()
+            if xor_coefficients > 0:
+                result.append(Term(xor_coefficients, term_polynomial_1.get_x_exponent()))
+            index += 1
+        # add the remainder of the polynomials:
+        while index < len(terms_polynomial_1):
+            term_polynomial_1 = terms_polynomial_1[index]
+            result.append(Term(term_polynomial_1.get_coefficient(), term_polynomial_1.get_x_exponent()))
+            index += 1
+        while index < len(terms_polynomial_2):
+            term_polynomial_2 = terms_polynomial_2[index]
+            result.append(Term(term_polynomial_2.get_coefficient(), term_polynomial_2.get_x_exponent()))
+            index += 1
+        return IntPolynomial(result)
+
+
 
     @staticmethod
     def multiply(polynomial_1: AlphaPolynomial, polynomial_2: AlphaPolynomial) -> AlphaPolynomial:
@@ -270,7 +353,6 @@ class PolynomialOperations:
                 coefficients_sum = coefficients_sum % 256 + math.floor(coefficients_sum / 256)
             coefficients_sum = coefficients_sum ^ antilog_alpha_coefficients[index]
         return calculator.get_antilog_from_alpha(coefficients_sum)
-            
 
     @staticmethod
     def generate_generator_polynomial(n: int) -> AlphaPolynomial:
@@ -304,6 +386,18 @@ class PolynomialOperations:
         # create a list of terms with the converted alpha value (Int -> Alpha):
         alpha_terms = [Term(Alpha(calculator.get_antilog_from_alpha(coefficient)), x_exponent) for coefficient, x_exponent in coefficients]
         return AlphaPolynomial(alpha_terms)
-    
-int_polynomial = IntPolynomial([Term(1,2), Term(3, 1), Term(2, 0)])
-alpha_polynomial = PolynomialOperations.convert_int_to_alpha(int_polynomial)
+
+    @staticmethod
+    def convert_alpha_to_int(alpha_polynomial: AlphaPolynomial) -> IntPolynomial:
+        """Method to convert an AlphaPolynomial to an IntPolynomial object. This is useful 
+
+        Args:
+            alpha_polynomial (AlphaPolynomial): Alpha polynomial to be converted to an IntPolynomial
+
+        Returns:
+            IntPolynomial: a representation of the coefficients in an integer fashion
+        """
+        calculator = PolynomialOperations.alpha_calculator
+        coefficients = [ (term.get_coefficient().get_exponent(), term.get_x_exponent()) for term in alpha_polynomial.get_coefficients() ]
+        int_terms = [ Term(calculator.get_log_from_alpha(coefficient), x_exponent) for coefficient, x_exponent in coefficients]
+        return IntPolynomial(int_terms)
