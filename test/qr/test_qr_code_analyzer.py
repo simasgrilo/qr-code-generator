@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.qr.QRCodeInputAnalyzer import QRCodeAnalyzer
+from src.qr.QRCodeInputAnalyzer import QRCodeInputAnalyzer
 
 
 class TestQRCodeInputAnalyzer(unittest.TestCase):
@@ -10,7 +10,7 @@ class TestQRCodeInputAnalyzer(unittest.TestCase):
 
     def setUp(self):
         """Set up the QRCodeAnalyzer instance."""
-        self.analyzer = QRCodeAnalyzer()
+        self.analyzer = QRCodeInputAnalyzer()
 
     def test_numeric(self):
         """Test numeric input."""
