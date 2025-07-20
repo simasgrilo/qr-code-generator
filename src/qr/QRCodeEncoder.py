@@ -1,4 +1,7 @@
-""" module to determine the error correction level of a QR code """
+""" module to implement the QR Code encoding process
+    from input parser analysis and encoding to polynomial
+    division, data and error codewords generation and encoding (up to section 7.6 of ISO 18004)
+"""
 
 from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
 from src.qr.QRCodeInputAnalyzer import QRCodeInputAnalyzer
@@ -315,20 +318,26 @@ class QRCodeEncoder:
 
     def generate_blocks(self, version: int, error_correction_level: QRErrorCorrectionLevel,  encoded_input: bytes):
         """
-        Method to process the encoded input, generate error codewords and then concatenate them in blocks to prepare the QR code 
-        image generation
+        Method to process the encoded input, generate error codewords and then concatenate 
+        them in blocks to prepare the QR code image generation.
         The codewords need to be generated for each block and appended at the end of it.
-        This method will then iterate over each block per version & error correction level, split the data into different blocks and then 
-        add the error codewords as required. Following the specifications, Reed-Solomon error correction requires long polynomial division,
-        which requires two polinomials: one for the data and another one defined as the prime modulus polynomial x^8 + x^4 + x^3 + x^2 + 1 for
-        Galois Field GF(256). This field guarantees that any operation done in elements within it fits in a 8-bit codeword.
+        This method will then iterate over each block per version & error correction level, 
+        split the data into different blocks and then 
+        add the error codewords as required. Following the specifications, Reed-Solomon 
+        error correction requires long polynomial division,
+        which requires two polinomials: one for the data and another one defined as the prime
+        modulus polynomial x^8 + x^4 + x^3 + x^2 + 1 for
+        Galois Field GF(256). This field guarantees that any operation done in elements within
+        it fits in a 8-bit codeword.
         the following steps are applied:
         1) convert the data codewords as the coefficient of the polynomials being used
         2) convert the data codewords polynomial to alpha notation (same notation used in ISO 18004)
-        3) to avoid the lead term of the data codeword and the generator polynomial does not decrease too much, we add the difference of each exponent with
-           the number of error codewords: if the lead x is x^15 in data code words, for QR 1-M for example we multiply the whole data polynomial by x^10, 
-           where 10 is the number of error codewords (and therefore the lead exponent of the generator polynomial), 
-           and the generator polynomial by x^15 (which is x^25 - x^10). Both will have at the end x^25. This is allowd in Galois field operations and by
+        3) to avoid the lead term of the data codeword and the generator polynomial does not decrease 
+           too much, we add the difference of each exponent with the number of error codewords: 
+           if the lead x is x^15 in data code words, for QR 1-M for example we multiply the whole data 
+           polynomial by x^10, where 10 is the number of error codewords (and therefore the lead exponent
+           of the generator polynomial), and the generator polynomial by x^15 (which is x^25 - x^10).
+           Both will have at the end x^25. This is allowd in Galois field operations and by
            doing so, we'll avoid issues to keep track of the exponents that we need to decrease.
 
         Args:
@@ -339,27 +348,56 @@ class QRCodeEncoder:
         # TODO dividir esse método em múltiplas chamadas refatoradas.
         # tem que ter mais dois métodos: um pra gerar o data codeword e outro que chama esses dois.
         codeword_block_structure = error_correction_level.get_number_and_struct_of_error_correction_blocks(version)
-        resulting_blocks = bytes()
         offset = 0
         curr_block_no = 1
+        total_block_data_codewords = []
+        total_block_error_codewords = []
+        total_num_blocks = 0
+        # max_data_codeword_size and max_error_codeword_size will be required for the interleaving algo later on.
+        max_data_codeword_size = 0
+        max_error_codeword_size = 0
         for num_blocks, block in codeword_block_structure:
             total_codewords = block.total_codewords()
             data_codewords = block.data_codewords()
             error_codewords = total_codewords - data_codewords
+            total_num_blocks += num_blocks
+            max_data_codeword_size = max(max_data_codeword_size, data_codewords)
+            max_error_codeword_size = max(max_error_codeword_size, error_codewords)
             for block in range(num_blocks):
-                curr_block_data = []
+                curr_block_data_coefficients = []
                 # add the data codewords of the encoded data into blocks.
                 offset_limit_for_block = curr_block_no * data_codewords * 8 # the upper bound of the number of codewords for the current block, in bits
                 while offset < offset_limit_for_block:
-                    curr_block_data.append(int(encoded_input[offset:min(offset + 8, offset_limit_for_block)], 2))
+                    curr_block_data_coefficients.append(int(encoded_input[offset:min(offset + 8, offset_limit_for_block)], 2))
                     offset += 8
                 # this is where the error codeblocks are added.
                 # the step by step is a bit more difficult than it should be. In fact, you need to understand a bit better the log and antilog table
                 # to manipulate the exponents since the whole operation is divided in modulo 2 bytewise operation with 285 1001010
                 generator_polynomial = PolynomialOperations.generate_generator_polynomial(error_codewords)
-                data_polynomial = IntPolynomial([Term(coefficient, len(curr_block_data) - exponent - 1) for exponent, coefficient in enumerate(curr_block_data)])
+                data_polynomial = IntPolynomial([Term(coefficient, len(curr_block_data_coefficients) - exponent - 1) for exponent, coefficient in enumerate(curr_block_data_coefficients)])
                 error_correction_codewords = PolynomialOperations.divide(data_polynomial, generator_polynomial)
-                resulting_blocks += curr_block_data
-            curr_block_no += 1
-qr = QRCodeEncoder(1, QRErrorCorrectionLevel.M, QRCodeInputAnalyzer())
-print(qr.generate_blocks(1, QRErrorCorrectionLevel.M, qr.encode_input("HELLO WORLD")))
+                total_block_data_codewords.append(curr_block_data_coefficients)
+                error_correction_coefficients = PolynomialOperations.get_int_values_from_alpha(error_correction_codewords)
+                total_block_error_codewords.append(error_correction_coefficients)
+                curr_block_no += 1
+        resulting_blocks = []
+        for col in range(max_data_codeword_size):
+            for block in range(total_num_blocks):
+                # interleave the data codewords
+                if col >= len(total_block_data_codewords[block]):
+                    # some blocks might have more codewords than other
+                    # ignore the null position in the one with less data.
+                    continue
+                resulting_blocks.append(total_block_data_codewords[block][col])
+        for col in range(max_error_codeword_size):
+            for block in range(total_num_blocks):
+                if col >= len(total_block_error_codewords[block]):
+                    # some blocks might have more codewords than other 
+                    # ignore the null position in the one with less data.
+                    continue
+                resulting_blocks.append(total_block_error_codewords[block][col])
+        resulting_blocks_bin = [ bin(data)[2:].zfill(8) for data in resulting_blocks]
+        return bytes("".join(resulting_blocks_bin), encoding='utf-8')
+
+qr = QRCodeEncoder(4, QRErrorCorrectionLevel.Q, QRCodeInputAnalyzer())
+print(qr.generate_blocks(4, QRErrorCorrectionLevel.Q, qr.encode_input("HELLO WORLD")))
