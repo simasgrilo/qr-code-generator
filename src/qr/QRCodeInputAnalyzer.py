@@ -1,6 +1,6 @@
 """Module containing the class that define the encoding types of data that will be encoded in a QR code."""
 
-class QRCodeAnalyzer:
+class QRCodeInputAnalyzer:
     """Class to analyze QR code input according to the ISO/IEC 18004:2015 standard.
         This class determines the type of QR code that can be generated based on the input string, by heuristically checking the smallest possible encoding set
         that can be used to encode the input string.
