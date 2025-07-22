@@ -58,42 +58,45 @@ class TestQRCodeEncoder(unittest.TestCase):
         """
         result = self._encoder.encode_input("01234567")
         self.assertEqual(result, b'0001000010000000001100010101100110000110111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100')
-        
+
+    def test_encode_data_version_4_level_l(self):
+        """ Test to check if the conversion and encoding process works for more than one block """
+        qr = self._encoder
+        result = qr.generate_blocks(qr.encode_input("HELLO WORLD"))
+        self.assertEqual(result, bytes(('011000010110111100011010001011100101101110001001101010000110100'
+                                      '01110110000010001111011000001000111101100000100011110110000010001'
+                                      '11101100000100011110110000010001111011000001000111101100000100011'
+                                      '11011000001000111101100000100011110110000010001111011000001000111'
+                                      '10110000010001111011000001000111101100000100011110110000010001111'
+                                      '01100000100011110110000010001111011000001000111101100000100011110'
+                                      '11000001000111101100000100011110110000010001111011000001000111101'
+                                      '10000010001111011000001000111101100000100011110110000010001111011'
+                                      '00000100011110110000010001111011000001000111101100000100011110110'
+                                      '00001000111101100000100011110110000010001111011000001000110010111'
+                                      '00100101000110111011101110100111001111011011001000110101111111110'
+                                      '01110010101100001011110101010111010001001010110100101000010001100'
+                                      '10001000010001001111000000000'), encoding='utf-8'))
+
+class TestQRCodeEncoderVer1(unittest.TestCase):
+    """ Class for testing QRCodeEncoder for QR code version 1, level M"""
+    def setUp(self):
+        self._encoder = QRCodeEncoder(1, QRErrorCorrectionLevel.M, QRCodeInputAnalyzer())
+
     def test_encode_data_length_equals_iso_spec(self):
         """ Test to confirm if the encoding with version 1, level M
             yields the same number of codewords as the spec in Table 9
         """
         qr = self._encoder
-        result = qr.generate_blocks(1, QRErrorCorrectionLevel.M, qr.encode_input("HELLO WORLD"))
+        result = qr.generate_blocks(qr.encode_input("HELLO WORLD"))
         self.assertEqual(len(result) // 8, 26)
-        
+
     def test_encode_data_version_1_level_m_value(self):
         """ Test to check if the value of the encoding with version 1
             and level M matches the same data as in a bytestring.
         """
         qr = self._encoder
-        result = qr.generate_blocks(1, QRErrorCorrectionLevel.M, qr.encode_input("HELLO WORLD"))
+        result = qr.generate_blocks(qr.encode_input("HELLO WORLD"))
         self.assertEqual(result, bytes(("0110000101101111000110100010111001011011100010011010100001"
                                         "1010001110110000010001111011000001000111101100000100011110"
                                         "1100000100011100001011110011001011100100100001100100101101"
-                                        "01101011111011001101111110110011000000000"), encoding='utf-8'))
-        
-    def test_encode_data_version_4_level_q(self):
-        """ Test to check if the conversion and encoding process works for more than one block """
-        qr = self._encoder
-        result = qr.generate_blocks(4, QRErrorCorrectionLevel.Q, qr.encode_input("HELLO WORLD"))
-        self.assertEqual(result, bytes(('011000011110110001101111000100010001101011101100001011'
-                                        '1000010001010110111110110010001001000100011010100011101'
-                                        '10001101000000100011110110011101100000100010001000111101'
-                                        '1001110110000010001000100011110110011101100000100010001'
-                                        '0001111011001110110000010001000100011110110011101100000'
-                                        '1000100010001111011001110110000010001000100011110110011'
-                                        '1011000001000100010001111011001110110000010001000100011'
-                                        '0010011010111110111101001011101000010100001100000111111'
-                                        '00101110010110011001011100111101100110101100110100100100'
-                                        '01001110100100011100001100001011010001101100011100011010'
-                                        '11111001010100111100010001000110101101001111111110101011'
-                                        '00011100111001111110001010000001100101110000101010111111'
-                                        '11100110010011001011101000101011001010000100010011000101'
-                                        '11100001001000100001000110001000011111011110000110101110'
-                                        '1011111010110000010010100000000'), encoding='utf-8'))
+                                        "0110101111101100110111111011001100"), encoding='utf-8'))

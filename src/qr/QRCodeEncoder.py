@@ -327,7 +327,7 @@ class QRCodeEncoder:
         return transformed_encoded_input
     
 
-    def generate_blocks(self, version: int, error_correction_level: QRErrorCorrectionLevel,  encoded_input: bytes):
+    def generate_blocks(self, encoded_input: bytes):
         """
         Method to process the encoded input, generate error codewords and then concatenate 
         them in blocks to prepare the QR code image generation.
@@ -350,15 +350,16 @@ class QRCodeEncoder:
            of the generator polynomial), and the generator polynomial by x^15 (which is x^25 - x^10).
            Both will have at the end x^25. This is allowd in Galois field operations and by
            doing so, we'll avoid issues to keep track of the exponents that we need to decrease.
+        CHANGE in 22/07/2025
+        - version (int): QR Code Version and error_correction_level (QRErrorCorrectionLevel) are
+          now based on the instance value (as it should have been).
 
         Args:
-            version (int): QR Code Version
-            error_correction_level (QRErrorCorrectionLevel):
             encoded_input (bytes): information already encoded as a stream of bytes.
         """
         # TODO dividir esse método em múltiplas chamadas refatoradas.
         # tem que ter mais dois métodos: um pra gerar o data codeword e outro que chama esses dois.
-        codeword_block_structure = error_correction_level.get_number_and_struct_of_error_correction_blocks(version)
+        codeword_block_structure = self.error_correction_level.get_number_and_struct_of_error_correction_blocks(self.version)
         offset = 0
         curr_block_no = 1
         total_block_data_codewords = []
