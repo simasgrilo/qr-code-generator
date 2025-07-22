@@ -401,3 +401,18 @@ class PolynomialOperations:
         coefficients = [ (term.get_coefficient().get_exponent(), term.get_x_exponent()) for term in alpha_polynomial.get_coefficients() ]
         int_terms = [ Term(calculator.get_log_from_alpha(coefficient), x_exponent) for coefficient, x_exponent in coefficients]
         return IntPolynomial(int_terms)
+
+    @staticmethod
+    def get_int_values_from_alpha(alpha_polynomial: AlphaPolynomial) -> List[int]:
+        """ method to retrieve the integer values of alpha coefficients of an AlphaPolynomial object
+           under the hood it casts the AlphaPolynomial object to an IntPolynomial representation
+           and call its method get_coefficient
+
+        Args:
+            alpha_polynomial (AlphaPolynomial): alpha polynomial input (usually an error polynomial)
+
+        Returns:
+            coefficient_list (List[int]): list of integer values of the alpha coefficients as the error codewords.
+        """
+        int_from_alpha = PolynomialOperations.convert_alpha_to_int(alpha_polynomial)
+        return [ term.get_coefficient() for term in int_from_alpha.get_coefficients() ]
