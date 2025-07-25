@@ -26,9 +26,9 @@ class QRCodeImage:
         if not isinstance(version, int) or not 1 <= version <= 40:
             raise ValueError(f'Invalid version provided: {version}. Supported versions are between 1 and 40')
         self._version = version
-        self._matrix = self._get_matrix(version)
+        self._matrix = self._init_matrix(version)
 
-    def _get_matrix(self, version: int):
+    def _init_matrix(self, version: int):
         """ Method to construct the matrix that will contain all modules and patters as 
             per Sections 6 and 7.7 the matrix's size (i.e., quantity of modules) can be
             found in Table 1.
@@ -43,6 +43,14 @@ class QRCodeImage:
         """
         qr_symbol_size = (4 * (version - 1)) + 21
         return [ [ 0 for _ in range(qr_symbol_size) ] for _ in range(qr_symbol_size) ]
+    
+    def get_matrix(self):
+        """ Getter for the matrix structure.
+
+        Returns:
+            List[[list[int]]: A matrix denoting the QR Code symbol structure
+        """
+        return self._matrix
 
     def position_finder_patterns(self):
         """ Helper method to position the finder patterns to the QRCodeImage's matrix
@@ -95,17 +103,14 @@ class QRCodeImage:
             self._matrix[6][row] = bit
             bit = 1 - bit
             
-    def position_alignment_pattern(self):
-        """ Method to add the alignment pattern based on Annex E of ISO 18004, considering every possible centre
-            of the pattern. Note that the overlap check needs to be done before positioning it in the matrix.
-            For more details regarding this pattern, see Section 6 of the ISO.
+    def get_alignment_pattern_center(self):
+        """ Method to retrieve the center for each alignment pattern, depending on the QR code version
+           this was within method position_alignment_pattern but it was moved to allow unit testing.
+
+        Returns:
+            List[int]: A list containing the possible row and columns combinations to be the center module
+                       of the possible alignment patterns
         """
-        alignment_pattern_num = {1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 6, 8: 6, 9: 6, 10: 6, 11: 6, 12: 6,
-                                 13: 6, 14: 13, 15: 13, 16: 13, 17: 13, 18: 13, 19: 13, 20: 13,
-                                 21: 22, 22: 22, 23: 22, 24: 22, 25: 22, 26: 22, 27: 22, 28: 33,
-                                 29: 33, 30: 33, 31: 33, 32: 33, 33: 33, 34: 33, 35: 46, 36: 46,
-                                 37: 46, 38: 46, 39: 46, 40: 46
-        }
         # the follwing are starting center (dark central bit) of the alignment patterns to be created.
         # note that they have a calculation pattern that could be derived based on the version 
         # but for simplification purposes, it's the same row/column relation as in table E.1 of the ISO
@@ -121,18 +126,38 @@ class QRCodeImage:
                                     37: [6, 28, 54, 80, 106, 132, 158], 38: [6, 32, 58, 84, 110, 136, 162],
                                     39: [6, 26, 54, 82, 110, 138, 166], 40: [6, 30, 58, 86, 114, 142, 170]
         }
-        alignment_patterns = alignment_pattern_center[self._version]
+        return alignment_pattern_center[self._version]
+    
+    def get_alignment_pattern_num(self):
+        alignment_pattern_num = {1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 6, 8: 6, 9: 6, 10: 6, 11: 6, 12: 6,
+                                 13: 6, 14: 13, 15: 13, 16: 13, 17: 13, 18: 13, 19: 13, 20: 13,
+                                 21: 22, 22: 22, 23: 22, 24: 22, 25: 22, 26: 22, 27: 22, 28: 33,
+                                 29: 33, 30: 33, 31: 33, 32: 33, 33: 33, 34: 33, 35: 46, 36: 46,
+                                 37: 46, 38: 46, 39: 46, 40: 46
+        }
+        return alignment_pattern_num[self._version]
+
+    def position_alignment_pattern(self):
+        """ Method to add the alignment pattern based on Annex E of ISO 18004, considering every possible centre
+            of the pattern. Note that the overlap check needs to be done before positioning it in the matrix.
+            For more details regarding this pattern, see Section 6 of the ISO.
+        """
+        alignment_patterns = self.get_alignment_pattern_center()
         for center in alignment_patterns:
             for next_center in alignment_patterns:
                 row, col = center, next_center
                 if self._check_overlap(row, col):
                     continue
                 self._matrix[row][col] = 1
-                for left in range(row - 2, row + 3):
-                    self._matrix[left][col - 2] = 1
-                    self._matrix[row + 2][left] = 1
-                    self._matrix[row - 2][left] = 1
-                    self._matrix[left][col + 2] = 1
+                top_left = (row - 2, col - 2) # goes right
+                top_right = (row - 2, col + 2) # goes down
+                bot_left = (row + 2, col - 2) # goes up
+                bot_right = (row + 2, col + 2) # goes left
+                for offset in range(5):
+                    self._matrix[top_left[0]][top_left[1] + offset] = 1
+                    self._matrix[top_right[0] + offset][top_right[1]] = 1
+                    self._matrix[bot_left[0] - offset][bot_left[1]] = 1
+                    self._matrix[bot_right[0]][bot_right[1] - offset] = 1
 
     def _check_overlap(self, row: int, col: int):
         """Method to check whether positioning the alignment pattern centered at (row, col)
@@ -147,8 +172,16 @@ class QRCodeImage:
         """
         if self._matrix[row][col] == 1:
             return True
-        for left in range(row - 2, row + 3):
-            if self._matrix[left][col - 2] or self._matrix[col + 2][left] or self._matrix[row - 2][left] or self._matrix[row + 2][left]:
+        # consider the square edges as the starting verification points:
+        top_left = (row - 2, col - 2) # goes right
+        top_right = (row - 2, col + 2) # goes down
+        bot_left = (row + 2, col - 2) # goes up
+        bot_right = (row + 2, col + 2) # goes left
+        for offset in range(5):
+            if (self._matrix[top_left[0]][top_left[1] + offset] or
+                self._matrix[top_right[0] + offset][top_right[1]] or
+                self._matrix[bot_left[0] - offset][bot_left[1]] or
+                self._matrix[bot_right[0]][bot_right[1] - offset]):
                 return True
         return False
 
@@ -176,7 +209,7 @@ class QRCodeImage:
         else:
             # 8 - 3: 8 is 7 modules from the finder pattern + one module of the separator
             # the other 3 is the range.
-            offset = 11 
+            offset = 11
             for row in range(3):
                 for col in range(6):
                     self._matrix[size - (offset + row)][col] = 2
@@ -185,11 +218,12 @@ class QRCodeImage:
                     self._matrix[row][size - offset + col] = 2
 
     def generate_matrix(self):
+        """Method to generate the QR Code symbol with all the function patterns,
+           data and error codewords
+        """
         self.position_finder_patterns()
         self.position_alignment_pattern()
         self.position_timing_pattern()
         self.position_dark_module()
         self.reserve_control_modules()
-        pass
-qr = QRCodeImage(8)
-print(qr.generate_matrix())
+        return self._matrix
