@@ -11,6 +11,14 @@ class QRCodeImage:
        code symbol (timing pattern, finder, alignment, data and error 
        codewords, quiet zone, etc.) will be defined in different methods
        to allow better understanding and maintainability of the code.
+       26/06/2025 - added the following convention for better data allocation
+       1: dark modules
+       0: light modules
+       2: reserved modules for control data (format information area)
+       9: THE DATA AREA FOR THE DATA/ERROR CODEWORDS.
+       previous version considered light modules and available modules for data both as 0
+       which would confuse the algorithm of data positioning (especially in the
+       irregular scenarios)
     """
     
     def __init__(self, version: int):
@@ -42,7 +50,7 @@ class QRCodeImage:
                                image generation
         """
         qr_symbol_size = (4 * (version - 1)) + 21
-        return [ [ 0 for _ in range(qr_symbol_size) ] for _ in range(qr_symbol_size) ]
+        return [ [ 9 for _ in range(qr_symbol_size) ] for _ in range(qr_symbol_size) ]
     
     def get_matrix(self):
         """ Getter for the matrix structure.
@@ -58,6 +66,8 @@ class QRCodeImage:
             three cocentered squares for each of the symbols. this is why there are 
             values based on the difference of the QR code symbol's amount of modules
             and the position they appear.
+            Change - 26/06/2025: for better data adequation, 0 are now manually set. so
+            this method will also set the separator pattern
         """
         # top left finder
         for index in range(7):
@@ -65,9 +75,18 @@ class QRCodeImage:
             self._matrix[6][index] = 1
             self._matrix[index][0] = 1
             self._matrix[index][6] = 1
+        for index in range(1, 6):
+            self._matrix[index][1] = 0
+            self._matrix[index][5] = 0
+            self._matrix[1][index] = 0
+            self._matrix[5][index] = 0
         for row in range(2, 5):
             for col in range(2, 5):
                 self._matrix[row][col] = 1
+        # separator for the top left finder:
+        for row in range(8):
+            self._matrix[7][row] = 0
+            self._matrix[row][7] = 0
         
         # bottom left finder:
         boundary = len(self._matrix) - 1
@@ -76,10 +95,19 @@ class QRCodeImage:
             self._matrix[boundary - 6][index] = 1
             self._matrix[boundary - 6 + index][0] = 1
             self._matrix[boundary - 6 + index][6] = 1
+        for index in range(1, 6):
+            self._matrix[boundary - 1][index] = 0
+            self._matrix[boundary - 5][index] = 0
+            self._matrix[boundary - 6 + index][1] = 0
+            self._matrix[boundary - 6 + index][5] = 0
         for row in range(boundary - 4, boundary - 1):
             for col in range(2, 5):
                 self._matrix[row][col] = 1
-                
+        # separator for the bottom left finder:
+        for row in range(8):
+            self._matrix[boundary - 7][row] = 0
+            self._matrix[boundary - 7 + row][7] = 0
+
         # top right finder
         for index in range(boundary - 6, boundary):
             self._matrix[0][index] = 1
@@ -87,9 +115,17 @@ class QRCodeImage:
         for row in range(7):
             self._matrix[row][boundary - 6] = 1
             self._matrix[row][boundary] = 1
+        for index in range(boundary - 5, boundary):
+            self._matrix[boundary - index][boundary - 5] = 0
+            self._matrix[boundary - index][boundary - 1] = 0
+            self._matrix[1][index] = 0
+            self._matrix[5][index] = 0
         for row in range(2, 5):
             for col in range(boundary - 4, boundary - 1):
                 self._matrix[row][col] = 1
+        for row in range(boundary - 7, boundary + 1):
+            self._matrix[7][row] = 0
+            self._matrix[row - (boundary - 7)][boundary - 7] = 0
     
     def position_timing_pattern(self):
         """Adds the timing pattern to the QR symbol as in Section 6.3.5. This is required to support
@@ -158,7 +194,13 @@ class QRCodeImage:
                     self._matrix[top_right[0] + offset][top_right[1]] = 1
                     self._matrix[bot_left[0] - offset][bot_left[1]] = 1
                     self._matrix[bot_right[0]][bot_right[1] - offset] = 1
-
+                # light modules
+                for offset in range(3):
+                    # add or remove 1 to position in the inner light modules 3x3 square:
+                    self._matrix[top_left[0] + 1][top_left[1] + 1 + offset] = 0
+                    self._matrix[top_right[0] + offset + 1][top_right[1] - 1] = 0
+                    self._matrix[bot_left[0] - offset - 1][bot_left[1] + 1] = 0
+                    self._matrix[bot_right[0] - 1][bot_right[1] - offset -1 ] = 0
     def _check_overlap(self, row: int, col: int):
         """Method to check whether positioning the alignment pattern centered at (row, col)
            overlaps with any other pattern (mainly finder pattern)
@@ -178,10 +220,10 @@ class QRCodeImage:
         bot_left = (row + 2, col - 2) # goes up
         bot_right = (row + 2, col + 2) # goes left
         for offset in range(5):
-            if (self._matrix[top_left[0]][top_left[1] + offset] or
-                self._matrix[top_right[0] + offset][top_right[1]] or
-                self._matrix[bot_left[0] - offset][bot_left[1]] or
-                self._matrix[bot_right[0]][bot_right[1] - offset]):
+            if (self._matrix[top_left[0]][top_left[1] + offset] != 9 or
+                self._matrix[top_right[0] + offset][top_right[1]] != 9 or
+                self._matrix[bot_left[0] - offset][bot_left[1]] != 9 or
+                self._matrix[bot_right[0]][bot_right[1] - offset] != 9):
                 return True
         return False
 
@@ -189,7 +231,7 @@ class QRCodeImage:
         """Method to position the dark module, always at the right side of the
            separator pattern of the bottom left finder pattern
         """
-        dark_module_row = len(self._matrix) - 7
+        dark_module_row = len(self._matrix) - 8
         dark_module_col = 8
         self._matrix[dark_module_row][dark_module_col] = 1
         
@@ -198,14 +240,17 @@ class QRCodeImage:
             the information will depend on the input, therefore we can't assign at this moment
             (e.g., character code indicator, encoding mode, etc.) 
         """
-        size = len(self._matrix)
+        size = len(self._matrix) - 1
         if 1 <= self._version <= 7:
             for row in range(9):
-                self._matrix[8][row] = 2
-                self._matrix[row][8] = 2
-                self._matrix[8][size - row - 1] = 2
+                # this segregation is required as the control part of the left top finder function
+                # has 9 reserved modules, the other two have only 8 modules
+                self._matrix[8][row] = 2 if self._matrix[8][row] != 1 else 1
+                self._matrix[row][8] = 2 if self._matrix[row][8] != 1 else 1
+            for row in range(8):
+                self._matrix[8][size - row] = 2
                 # bottom left finder pattern - skip the dark module
-                self._matrix[size - row - 1][8] = 2 if self._matrix[size - row - 1][8] == 0 else 1
+                self._matrix[size - row][8] = 2 if self._matrix[size - row][8] == 9 else 1
         else:
             # 8 - 3: 8 is 7 modules from the finder pattern + one module of the separator
             # the other 3 is the range.
@@ -217,6 +262,50 @@ class QRCodeImage:
                 for col in range(3):
                     self._matrix[row][size - offset + col] = 2
 
+    # def position_codewords(self, encoded_input: bytes):
+    #     """Main method for positioning each of the codewords.
+    #        this method implements the logic described in Section 7.7.3 of the ISO.
+    #        the implementation describes the following key concepts:
+    #        1) the sequence of bit placement in the column must be from the right to left, 
+    #           starting at the end of the QR code symbol (n - 1, n - 1) up to the leftmost
+    #           available part, going either upwards or downwards (like a 'S' shaped race track)
+    #        2) the MSB of each codeword will be placed at the first avaiable module position.
+    #           this depends on the current direction of the codewords being placed
+    #        3) a bit placement can be either regular or irregular: regular ones  occupy a range of either
+    #           2 x 4 modules or 4 x 2 (depending on the positioning of the modules), while irregular ones
+    #           will follow along the column of some object (see figure 18 for an example) whenever it matches
+    #           a boundary of a finder pattern or an alignment pattern
+    #         when using irregular symbols, we'll position the most significant bits in the right hand size if downwards,
+    #         else we'll position it at the left hand side (upwards)
+
+    #     Args:
+    #         encoded_input (bytes): bytestream of all codewords correctly encoded, interleaved
+    #                                and constructed with the corresponding error codewords.
+    #     """
+    #     row, col = len(self._matrix) - 1, len(self._matrix) - 1
+    #     offset = 0
+    #     # we'll get each 8 bytes and positiont hem as possible in the encoding data part of the QR code symbol, according
+    #     # with the instructions. we'll repeat this while there's data to encode, up to the last possible area tghat the codeword can be input.
+    #     curr_byte = encoded_input[offset:offset + 8]
+    #     direction = 0 # 0 for upwards, 1 for downwards
+    #     while curr_byte != b'':
+    #         # determine where the bits will be set before placing them can save time: depending on the position, it's possible to reach a 
+    #         # function pattern and a irregular symbol needs to be considered.
+    #         # we'll start by considerign first the assignemtn of simple upward and downwards, and then at each of the directions, we'll check whether it's
+    #         # a regular or irregular symbol.
+    #         if not direction:
+    #             index = 0
+    #             while index < 8: # for each byte, we'll iterate as follows:
+    #                 self._matrix[row][col] = curr_byte[index]
+    #                 index += 1
+    #                 self._matrix[row][col - 1] = curr_byte[index]
+    #                 row -= 1
+    #         else:
+    #            pass
+                
+            
+                
+
     def generate_matrix(self):
         """Method to generate the QR Code symbol with all the function patterns,
            data and error codewords
@@ -226,4 +315,7 @@ class QRCodeImage:
         self.position_timing_pattern()
         self.position_dark_module()
         self.reserve_control_modules()
+        # self.position_codewords(encoded_input)
         return self._matrix
+qr = QRCodeImage(4)
+print(qr.generate_matrix())
