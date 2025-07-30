@@ -1,7 +1,6 @@
 """ Module to generate the QR Code Imagering"""
 
-from src.qr.QRCodeInputAnalyzer import QRCodeInputAnalyzer
-from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
+
 from src.qr.QRCodeEncoder import QRCodeEncoder
 
 class QRCodeImage:
@@ -23,21 +22,24 @@ class QRCodeImage:
        previous version considered light modules and available modules for data both as 0
        which would confuse the algorithm of data positioning (especially in the
        irregular scenarios)
-       This approach was done to have a cleaner data allocation within the data area of the QR code symbol.
+       This approach was done to have a cleaner data allocation 
+       within the data area of the QR code symbol.
     """
-    
+
     def __init__(self, version: int, encoder: QRCodeEncoder):
         """Initializes the QRCodeImage class by assigning a whiteboard
            full blank data matrix for the qr code image.
-           the notation that this class follows is the same terminology as in the ISO 18004, including
-           blank module: 0
-           dark module: 1.
+           the notation that this class follows is the same terminology 
+           as in the ISO 18004:
+           - blank module: 0
+           - dark module: 1.
 
         Args:
             version (int): QR Code version
         """
         if not isinstance(version, int) or not 1 <= version <= 40:
-            raise ValueError(f'Invalid version provided: {version}. Supported versions are between 1 and 40')
+            raise ValueError((f'Invalid version provided: {version}.'
+                              'Supported versions are between 1 and 40'))
         self._version = version
         self._matrix = self._init_matrix(version)
         self._encoder = encoder
@@ -162,30 +164,26 @@ class QRCodeImage:
         # it's the same row/column relation as in table E.1 of the ISO
         alignment_pattern_center = {1: [], 2: [6, 18], 3:[6,22], 4: [6, 26], 5: [6,30], 6: [6,34],
                                     7: [6,22,38], 8: [6, 24, 42], 9: [6,26,46], 10: [6, 28, 50],
-                                    11: [6, 30, 54], 12: [6,32,58], 13: [6, 34, 62], 14: [6, 26, 60, 74],
-                                    15: [6, 26, 48, 70], 16: [6, 26, 50, 74], 17: [6, 30, 54, 78],
+                                    11: [6, 30, 54], 12: [6,32,58], 13: [6, 34, 62],
+                                    14: [6, 26, 60, 74], 15: [6, 26, 48, 70],
+                                    16: [6, 26, 50, 74], 17: [6, 30, 54, 78],
                                     18: [6, 30, 56, 82], 19: [6, 30, 58, 86], 20: [6, 43, 62, 90],
-                                    21: [6, 28, 50, 72, 94], 22: [6, 26, 50, 74, 98], 23: [6, 30, 54, 78, 102],
-                                    24: [6, 34, 58, 80, 106], 25: [6, 23, 58, 84, 110],
+                                    21: [6, 28, 50, 72, 94], 22: [6, 26, 50, 74, 98],
+                                    23: [6, 30, 54, 78, 102], 24: [6, 34, 58, 80, 106],
+                                    25: [6, 23, 58, 84, 110],
                                     26: [6, 30, 58, 86, 114], 27: [6, 34, 62, 90, 118],
                                     28: [6, 26, 50, 74, 98, 122], 29: [6, 30, 54, 78, 102, 126],
                                     30: [6, 26, 52, 78, 104, 130], 31: [6, 30, 67, 82, 108, 134],
                                     32: [6, 34, 60, 86, 112, 138], 33: [6, 30, 58, 86, 114, 142],
-                                    34: [6, 34, 62, 90, 118, 146], 35: [6, 30, 54, 78, 102, 126, 150],
+                                    34: [6, 34, 62, 90, 118, 146],
+                                    35: [6, 30, 54, 78, 102, 126, 150],
                                     36: [6, 24, 50, 76, 102, 128, 154],
-                                    37: [6, 28, 54, 80, 106, 132, 158], 38: [6, 32, 58, 84, 110, 136, 162],
-                                    39: [6, 26, 54, 82, 110, 138, 166], 40: [6, 30, 58, 86, 114, 142, 170]
+                                    37: [6, 28, 54, 80, 106, 132, 158],
+                                    38: [6, 32, 58, 84, 110, 136, 162],
+                                    39: [6, 26, 54, 82, 110, 138, 166],
+                                    40: [6, 30, 58, 86, 114, 142, 170]
         }
         return alignment_pattern_center[self._version]
-    
-    def get_alignment_pattern_num(self):
-        alignment_pattern_num = {1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 6, 8: 6, 9: 6, 10: 6, 11: 6, 12: 6,
-                                 13: 6, 14: 13, 15: 13, 16: 13, 17: 13, 18: 13, 19: 13, 20: 13,
-                                 21: 22, 22: 22, 23: 22, 24: 22, 25: 22, 26: 22, 27: 22, 28: 33,
-                                 29: 33, 30: 33, 31: 33, 32: 33, 33: 33, 34: 33, 35: 46, 36: 46,
-                                 37: 46, 38: 46, 39: 46, 40: 46
-        }
-        return alignment_pattern_num[self._version]
 
     def position_alignment_pattern(self):
         """ Method to add the alignment pattern based on Annex E of ISO 18004, considering every 
@@ -319,7 +317,6 @@ class QRCodeImage:
         direction = -1 # -1 for upwards, 1 for downwards. This way we can
                        # just add direction to the row.
         index = 0
-        curr_bit = 7 # control variable for debugging purposes - will be removed.
         col_orientation = 0 # 0 for right column, 1 for left column
         while index < len(encoded_input):
             # determine where the bits will be set before placing them can save time:
@@ -356,13 +353,13 @@ class QRCodeImage:
                 (qr_matrix[row][col] == 2 and qr_matrix[row][col - 1] == 2)):
                 if direction == -1:
                     # case: hit the reserved area for the QR code metadata or the separator pattern
-                    # or for the reserved area for version information of the right upper 
-                    # finder pattern. Position the next possible module two units at the left 
+                    # or for the reserved area for version information of the right upper
+                    # finder pattern. Position the next possible module two units at the left
                     # of the current one, and at the previous row.
                     row += 1
                     direction = 1
                 else:
-                    # case: hit the reserved area for the QR code metadata or the separator pattern 
+                    # case: hit the reserved area for the QR code metadata or the separator pattern
                     # of the left bottom finder pattern - the opposite direction of the case above.
                     row -= 1
                     direction = -1
@@ -401,13 +398,6 @@ class QRCodeImage:
                 col -= 1
                 col_orientation += 1
             index += 1
-            curr_bit -= 1
-            if curr_bit == -1:
-                curr_bit = 7
-            # for print_row in range(len(qr_matrix)):
-            #     print(f'{qr_matrix[print_row]} \n')
-            # # print(curr_bit)
-            # print(f"curr cell: {row} and {col}: \n")
 
     def add_control_data(self):
         """ Utility method to enhance testability of the features that add control data
@@ -434,11 +424,11 @@ class QRCodeImage:
            2) generate the matrix with all positioning
            3) generate the QR data as an image. - to be implemented
         """
-        # TODO i think that this needs to be transformed into a bit stream rather than bytes
-        # as we'll be operating in a bit-level. This can be either
+        # Model the bit stream as a finite sequence of bits to be positioned
+        # on the grid. We can:
         # a) consider it as a bit-string and iterate char by char (more intuitive, bit slower)
         # b) consider it as a bytestream (or integers)
-        # hence the conversion below
+        # Therefore, the conversion below is done to consider a bit stream.
         bytes_data = self._encoder.generate_encoded_data(data)
         bytes_data = bin(int(bytes_data, base=2))[2:]
         self.generate_matrix(bytes_data)
