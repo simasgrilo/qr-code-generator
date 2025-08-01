@@ -3,6 +3,12 @@
 
 from src.qr.QRCodeEncoder import QRCodeEncoder
 
+# module constants to avoid having magic numbers
+DARK_MODULE = 1
+LIGHT_MODULE = 0
+RESERVED_CONTROL_MODULES = 2
+AVAILABLE_MODULE = 9
+
 class QRCodeImage:
     """Main class to generate the codeword placement in an image
        It follows the implementation steps of Section 7.7 in ISO 18004,
@@ -79,61 +85,61 @@ class QRCodeImage:
         """
         # top left finder
         for index in range(7):
-            self._matrix[0][index] = 1
-            self._matrix[6][index] = 1
-            self._matrix[index][0] = 1
-            self._matrix[index][6] = 1
+            self._matrix[0][index] = DARK_MODULE
+            self._matrix[6][index] = DARK_MODULE
+            self._matrix[index][0] = DARK_MODULE
+            self._matrix[index][6] = DARK_MODULE
         for index in range(1, 6):
-            self._matrix[index][1] = 0
-            self._matrix[index][5] = 0
-            self._matrix[1][index] = 0
-            self._matrix[5][index] = 0
+            self._matrix[index][1] = LIGHT_MODULE
+            self._matrix[index][5] = LIGHT_MODULE
+            self._matrix[1][index] = LIGHT_MODULE
+            self._matrix[5][index] = LIGHT_MODULE
         for row in range(2, 5):
             for col in range(2, 5):
-                self._matrix[row][col] = 1
+                self._matrix[row][col] = DARK_MODULE
         # separator for the top left finder:
         for row in range(8):
-            self._matrix[7][row] = 0
-            self._matrix[row][7] = 0
+            self._matrix[7][row] = LIGHT_MODULE
+            self._matrix[row][7] = LIGHT_MODULE
 
         # bottom left finder:
-        boundary = len(self._matrix) - 1
+        boundary = len(self._matrix) - DARK_MODULE
         for index in range(7):
-            self._matrix[boundary][index] = 1
-            self._matrix[boundary - 6][index] = 1
-            self._matrix[boundary - 6 + index][0] = 1
-            self._matrix[boundary - 6 + index][6] = 1
+            self._matrix[boundary][index] = DARK_MODULE
+            self._matrix[boundary - 6][index] = DARK_MODULE
+            self._matrix[boundary - 6 + index][0] = DARK_MODULE
+            self._matrix[boundary - 6 + index][6] = DARK_MODULE
         for index in range(1, 6):
-            self._matrix[boundary - 1][index] = 0
-            self._matrix[boundary - 5][index] = 0
-            self._matrix[boundary - 6 + index][1] = 0
-            self._matrix[boundary - 6 + index][5] = 0
+            self._matrix[boundary - 1][index] = LIGHT_MODULE
+            self._matrix[boundary - 5][index] = LIGHT_MODULE
+            self._matrix[boundary - 6 + index][1] = LIGHT_MODULE
+            self._matrix[boundary - 6 + index][5] = LIGHT_MODULE
         for row in range(boundary - 4, boundary - 1):
             for col in range(2, 5):
-                self._matrix[row][col] = 1
+                self._matrix[row][col] = DARK_MODULE
         # separator for the bottom left finder:
         for row in range(8):
-            self._matrix[boundary - 7][row] = 0
-            self._matrix[boundary - 7 + row][7] = 0
+            self._matrix[boundary - 7][row] = LIGHT_MODULE
+            self._matrix[boundary - 7 + row][7] = LIGHT_MODULE
 
         # top right finder
         for index in range(boundary - 6, boundary):
-            self._matrix[0][index] = 1
-            self._matrix[6][index] = 1
+            self._matrix[0][index] = DARK_MODULE
+            self._matrix[6][index] = DARK_MODULE
         for row in range(7):
             self._matrix[row][boundary - 6] = 1
-            self._matrix[row][boundary] = 1
+            self._matrix[row][boundary] = DARK_MODULE
         for index in range(boundary - 5, boundary):
-            self._matrix[boundary - index][boundary - 5] = 0
-            self._matrix[boundary - index][boundary - 1] = 0
-            self._matrix[1][index] = 0
-            self._matrix[5][index] = 0
+            self._matrix[boundary - index][boundary - 5] = LIGHT_MODULE
+            self._matrix[boundary - index][boundary - 1] = LIGHT_MODULE
+            self._matrix[1][index] = LIGHT_MODULE
+            self._matrix[5][index] = LIGHT_MODULE
         for row in range(2, 5):
             for col in range(boundary - 4, boundary - 1):
-                self._matrix[row][col] = 1
+                self._matrix[row][col] = DARK_MODULE
         for row in range(boundary - 7, boundary + 1):
-            self._matrix[7][row] = 0
-            self._matrix[row - (boundary - 7)][boundary - 7] = 0
+            self._matrix[7][row] = LIGHT_MODULE
+            self._matrix[row - (boundary - 7)][boundary - 7] = LIGHT_MODULE
 
     def position_timing_pattern(self):
         """Adds the timing pattern to the QR symbol as in Section 6.3.5. This is required to support
@@ -197,23 +203,23 @@ class QRCodeImage:
                 row, col = center, next_center
                 if self._check_overlap(row, col):
                     continue
-                self._matrix[row][col] = 1
+                self._matrix[row][col] = DARK_MODULE
                 top_left = (row - 2, col - 2) # goes right
                 top_right = (row - 2, col + 2) # goes down
                 bot_left = (row + 2, col - 2) # goes up
                 bot_right = (row + 2, col + 2) # goes left
                 for offset in range(5):
-                    self._matrix[top_left[0]][top_left[1] + offset] = 1
-                    self._matrix[top_right[0] + offset][top_right[1]] = 1
-                    self._matrix[bot_left[0] - offset][bot_left[1]] = 1
-                    self._matrix[bot_right[0]][bot_right[1] - offset] = 1
+                    self._matrix[top_left[0]][top_left[1] + offset] = DARK_MODULE
+                    self._matrix[top_right[0] + offset][top_right[1]] = DARK_MODULE
+                    self._matrix[bot_left[0] - offset][bot_left[1]] = DARK_MODULE
+                    self._matrix[bot_right[0]][bot_right[1] - offset] = DARK_MODULE
                 # light modules
                 for offset in range(3):
                     # add or remove 1 to position in the inner light modules 3x3 square:
-                    self._matrix[top_left[0] + 1][top_left[1] + 1 + offset] = 0
-                    self._matrix[top_right[0] + offset + 1][top_right[1] - 1] = 0
-                    self._matrix[bot_left[0] - offset - 1][bot_left[1] + 1] = 0
-                    self._matrix[bot_right[0] - 1][bot_right[1] - offset -1 ] = 0
+                    self._matrix[top_left[0] + 1][top_left[1] + 1 + offset] = LIGHT_MODULE
+                    self._matrix[top_right[0] + offset + 1][top_right[1] - 1] = LIGHT_MODULE
+                    self._matrix[bot_left[0] - offset - 1][bot_left[1] + 1] = LIGHT_MODULE
+                    self._matrix[bot_right[0] - 1][bot_right[1] - offset -1 ] = LIGHT_MODULE
     def _check_overlap(self, row: int, col: int):
         """Method to check whether positioning the alignment pattern centered at (row, col)
            overlaps with any other pattern (mainly finder pattern)
@@ -225,7 +231,7 @@ class QRCodeImage:
         Returns:
             _type_: _description_
         """
-        if self._matrix[row][col] == 1:
+        if self._matrix[row][col] == DARK_MODULE:
             return True
         # consider the square edges as the starting verification points:
         top_left = (row - 2, col - 2) # goes right
@@ -233,10 +239,10 @@ class QRCodeImage:
         bot_left = (row + 2, col - 2) # goes up
         bot_right = (row + 2, col + 2) # goes left
         for offset in range(5):
-            if (self._matrix[top_left[0]][top_left[1] + offset] != 9 or
-                self._matrix[top_right[0] + offset][top_right[1]] != 9 or
-                self._matrix[bot_left[0] - offset][bot_left[1]] != 9 or
-                self._matrix[bot_right[0]][bot_right[1] - offset] != 9):
+            if (self._matrix[top_left[0]][top_left[1] + offset] != AVAILABLE_MODULE or
+                self._matrix[top_right[0] + offset][top_right[1]] != AVAILABLE_MODULE or
+                self._matrix[bot_left[0] - offset][bot_left[1]] != AVAILABLE_MODULE or
+                self._matrix[bot_right[0]][bot_right[1] - offset] != AVAILABLE_MODULE):
                 return True
         return False
 
@@ -246,7 +252,7 @@ class QRCodeImage:
         """
         dark_module_row = len(self._matrix) - 8
         dark_module_col = 8
-        self._matrix[dark_module_row][dark_module_col] = 1
+        self._matrix[dark_module_row][dark_module_col] = DARK_MODULE
 
     def reserve_control_modules(self):
         """ Method to reserve the modules based on the data encoding pattern
@@ -258,22 +264,22 @@ class QRCodeImage:
             for row in range(9):
                 # this segregation is required as the control part of the left top finder function
                 # has 9 reserved modules, the other two have only 8 modules
-                self._matrix[8][row] = 2 if self._matrix[8][row] != 1 else 1
-                self._matrix[row][8] = 2 if self._matrix[row][8] != 1 else 1
+                self._matrix[8][row] = RESERVED_CONTROL_MODULES if self._matrix[8][row] != DARK_MODULE else 1
+                self._matrix[row][8] = RESERVED_CONTROL_MODULES if self._matrix[row][8] != DARK_MODULE else 1
             for row in range(8):
-                self._matrix[8][size - row] = 2
+                self._matrix[8][size - row] = RESERVED_CONTROL_MODULES
                 # bottom left finder pattern - skip the dark module
-                self._matrix[size - row][8] = 2 if self._matrix[size - row][8] == 9 else 1
+                self._matrix[size - row][8] = RESERVED_CONTROL_MODULES if self._matrix[size - row][8] == AVAILABLE_MODULE else 1
         else:
             # 8 - 3: 8 is 7 modules from the finder pattern + one module of the separator
             # the other 3 is the range.
             offset = 11
             for row in range(3):
                 for col in range(6):
-                    self._matrix[size - (offset + row)][col] = 2
+                    self._matrix[size - (offset + row)][col] = RESERVED_CONTROL_MODULES
             for row in range(6):
                 for col in range(3):
-                    self._matrix[row][size - offset + col] = 2
+                    self._matrix[row][size - offset + col] = RESERVED_CONTROL_MODULES
 
     def position_codewords(self, encoded_input: bytes):
         """Main method for positioning each of the codewords.
@@ -344,13 +350,13 @@ class QRCodeImage:
                 row += 1
                 direction = 1
                 col -= 2
-            while ((qr_matrix[row][col] == 2 and qr_matrix[row][col - 1] == 0) or
+            while ((qr_matrix[row][col] == RESERVED_CONTROL_MODULES and qr_matrix[row][col - 1] == LIGHT_MODULE) or
                    (row, col) == DARK_MODULE_POS):
                 # case: the reserved area for the QR code metadata at the right of the
                 # left lower finder patter was found. Also, skip the dark control module
                 row += direction
-            if ((qr_matrix[row][col] == 0 and qr_matrix[row][col - 1] == 0) or
-                (qr_matrix[row][col] == 2 and qr_matrix[row][col - 1] == 2)):
+            if ((qr_matrix[row][col] == LIGHT_MODULE and qr_matrix[row][col - 1] == LIGHT_MODULE) or
+                (qr_matrix[row][col] == RESERVED_CONTROL_MODULES and qr_matrix[row][col - 1] == RESERVED_CONTROL_MODULES)):
                 if direction == -1:
                     # case: hit the reserved area for the QR code metadata or the separator pattern
                     # or for the reserved area for version information of the right upper
@@ -364,16 +370,16 @@ class QRCodeImage:
                     row -= 1
                     direction = -1
                 col -= 2
-            if (qr_matrix[row][col] == 1 and qr_matrix[row][col - 1] == 1):
+            if (qr_matrix[row][col] == DARK_MODULE and qr_matrix[row][col - 1] == DARK_MODULE):
                 # case: hit an alignment pattern for both modules: skip these:
-                while row < size and qr_matrix[row][col] == 1 or qr_matrix[row][col] == 0:
+                while row < size and qr_matrix[row][col] == DARK_MODULE or qr_matrix[row][col] == LIGHT_MODULE:
                     row += direction
-            if (qr_matrix[row][col] == 1 and qr_matrix[row][col - 1] == 0 and row == 6):
+            if (qr_matrix[row][col] == DARK_MODULE and qr_matrix[row][col - 1] == LIGHT_MODULE and row == 6):
                 # case: hit one of the timing patterns: skip the current bit:
                 row += direction
-            if (qr_matrix[row][col] == 0 and qr_matrix[row - 1][col] == 1 and col == 6):
+            if (qr_matrix[row][col] == LIGHT_MODULE and qr_matrix[row - 1][col] == DARK_MODULE and col == 6):
                 col -= direction
-            while (qr_matrix[row][col - 1] == 9 and qr_matrix[row][col] == 1) and direction == -1:
+            while (qr_matrix[row][col - 1] == AVAILABLE_MODULE and qr_matrix[row][col] == DARK_MODULE) and direction == -1:
                 # case: hit the left border of an alignment pattern while going up
                 # position the column left of the pattern boundary as the next avaliable module
                 col -= 1
@@ -381,7 +387,7 @@ class QRCodeImage:
                 index += 1
                 row += direction
                 col += 1
-            while (qr_matrix[row][col] == 1 and qr_matrix[row][col + 1] == 9) and direction == 1:
+            while (qr_matrix[row][col] == DARK_MODULE and qr_matrix[row][col + 1] == AVAILABLE_MODULE) and direction == 1:
                 # case: hit the right border of an alignment pattern while going down.
                 # position the column right of the pattern boundary as the next available module
                 col += 1
