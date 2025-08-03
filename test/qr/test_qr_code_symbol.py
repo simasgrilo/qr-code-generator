@@ -140,7 +140,7 @@ class TestQRCodeSymbolVer4(unittest.TestCase):
         self._qr_code_gen.generate_matrix(bytes_data)
         # delegate the mask implementation to the corresponding class
         masked_qr_symbol = QRCodeMasker.apply_mask(self._qr_code_gen)
-        self.assertEqual(masked_qr_symbol, expected)
+        self.assertEqual(masked_qr_symbol.get_masked_matrix(), expected)
 
 class TestQRCodeSymbolVer7(unittest.TestCase):
     """ Test class to perform tests with QR Code Version 6"""

@@ -40,6 +40,7 @@ class QRCodeMasker:
         qr_code_symbol = qr_code_ref.get_matrix()
         lowest_penalty = sys.maxsize
         best_mask = None
+        best_mask_id = -1
         for mask in range(8):
             mask_matrix = QRCodeMasker._get_mask_matrix(mask, qr_code_ref)
             for row in range(len(mask_matrix)):
@@ -51,7 +52,7 @@ class QRCodeMasker:
                         mask_matrix[row][col] = mask_matrix[row][col] ^ qr_code_symbol[row][col]
             penalty = QRCodeMasker._calculate_penalty(mask_matrix)
             if lowest_penalty > penalty:
-                best_mask = mask_matrix
+                best_mask = QRCodeMask(mask_matrix, mask)
                 lowest_penalty = penalty
         return best_mask
 
@@ -214,3 +215,35 @@ class QRCodeMasker:
             if mask_matrix[row][curr_col] != QRCodeConstants.LIGHT_MODULE:
                 return False
         return True
+
+class QRCodeMask():
+    """Data Class to hold reference of a QR Code mask pattern picked
+       this class will have the reference to the resulting matrix after appyling 
+       the mask pattern, as well as teh ID of the mask used (ranging from 0 to 7 - 111)
+    """
+
+    def __init__(self, data: List[List[int]], mask_id: int):
+        self._mask_id = mask_id
+        self._data = data
+
+    def get_masked_matrix(self):
+        """Getter method to return the result of the data mask application
+           to the matrix
+
+        Returns:
+            self._data (List[List[int]]): a matrix denoting the encoded data
+                                          after applying the data mask procedure 
+        """
+        return self._data
+
+    def get_mask_id(self):
+        """Getter method to return the result of the data mask id application
+           to the matrix.
+           according to the Section 7.8, there are 7 different mask patterns
+           ranging from 0 to 7
+
+        Returns:
+            self._data (List[List[int]]): a matrix denoting the encoded data
+                                          after applying the data mask procedure 
+        """
+        return self._mask_id
