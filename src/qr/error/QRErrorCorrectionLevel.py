@@ -12,8 +12,21 @@ class QRErrorCorrectionLevel(enum.Enum):
 
     def __str__(self):
         return self.value
-    
-    
+
+    def get_binary_indicator(self):
+        """ Method to return the binary indicator of the level:
+        Returns:
+            bin_indicator (str): a two-sized bytestring with binaty indicators
+                                 as in table 12 of the ISO (Section 7.9.1) 
+        """
+        indicator_map = {
+            QRErrorCorrectionLevel.L : '01',
+            QRErrorCorrectionLevel.M : '00',
+            QRErrorCorrectionLevel.Q : '11',
+            QRErrorCorrectionLevel.H : '10'
+        }
+        return indicator_map[self]
+
     def get_number_of_data_codewords(self, version: int):
         """
         Method to retrieve the codeword per error correction level

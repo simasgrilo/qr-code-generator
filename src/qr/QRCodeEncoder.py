@@ -412,3 +412,18 @@ class QRCodeEncoder:
         padding = ['0' for _ in range(self.get_remainder_bits())]
         resulting_blocks_bin.append("".join(padding))
         return bytes("".join(resulting_blocks_bin), encoding='utf-8')
+
+    def generate_encoded_data(self, input_str: str):
+        """Method to encode a input string in the correct data format, generate its codewords
+           outputting data ready to be entered into the QR Code symbol.
+
+        Args:
+            input_str (str): data to which will be generated the QR code symbol
+
+        Returns:
+            codeword_stream (bytes): the bytestream consisting of data and error codewords
+        """
+        encoded_data = self.encode_input(input_str)
+        codeword_stream = self.generate_blocks(encoded_data)
+        return codeword_stream
+

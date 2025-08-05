@@ -1,4 +1,4 @@
-
+""" Module that contains the QRCode generation"""
 
 
 class QRCode:
