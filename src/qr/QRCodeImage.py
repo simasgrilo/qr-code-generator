@@ -4,6 +4,7 @@
 from src.qr.QRCodeEncoder import QRCodeEncoder
 from src.qr.utils import QRCodeConstants
 from src.qr.QRCodeDataMask import QRCodeMasker
+from src.qr.QRCodeFormatInfo import QRCodeFormatInfoEncoder
 
 class QRCodeImage:
     """Main class to generate the codeword placement in an image
@@ -28,7 +29,7 @@ class QRCodeImage:
        within the data area of the QR code symbol.
     """
 
-    def __init__(self, version: int, encoder: QRCodeEncoder):
+    def __init__(self, version: int, encoder: QRCodeEncoder, format_info: QRCodeFormatInfoEncoder):
         """Initializes the QRCodeImage class by assigning a whiteboard
            full blank data matrix for the qr code image.
            the notation that this class follows is the same terminology 
@@ -45,6 +46,7 @@ class QRCodeImage:
         self._version = version
         self._matrix = self._init_matrix(version)
         self._encoder = encoder
+        self._qr_code_format_info = format_info
         # Add 31/07/2025 - for better calculation of the mask patterns (See Section 7.8)
         self._restricted_modules_pos = set()
 
@@ -403,8 +405,8 @@ class QRCodeImage:
                 index += 1
                 row += direction
                 col += 1
-            while ((qr_matrix[row][col] == QRCodeConstants.DARK_MODULE and 
-                    qr_matrix[row][col + 1] == QRCodeConstants.AVAILABLE_MODULE) and 
+            while ((qr_matrix[row][col] == QRCodeConstants.DARK_MODULE and
+                    qr_matrix[row][col + 1] == QRCodeConstants.AVAILABLE_MODULE) and
                     direction == 1):
                 # case: hit the right border of an alignment pattern while going down.
                 # position the column right of the pattern boundary as the next available module
@@ -433,7 +435,7 @@ class QRCodeImage:
         self.position_dark_module()
         self.reserve_control_modules()
 
-    def _store_restricted_modules(self):
+    def store_restricted_modules(self):
         """ Method to calculate and store the restricted (reserved) modules for function
            patterns and for the reserved areas
            This will be useful when applying data masking for the QR symbol where the check
@@ -446,13 +448,55 @@ class QRCodeImage:
                     self._matrix[row][col] == QRCodeConstants.RESERVED_CONTROL_MODULES):
                     self._restricted_modules_pos.add((row, col))
 
+    def _position_bits(self):
+        """ Method to position the version bits in the reserved
+            format areas, starting from the least significant bit.
+            There are two positions to allocate the 15 bits:
+            1) 8 bits below the top right finder and 7 bits at the right of the
+               bottom left finder
+            2) 7 bits at the right of the top left finder,
+               1 bit at the intersection of the reserved rows and 
+               7 bits below the top left finder
+        """
+        version_bits = self._qr_code_format_info.calculate_bit_information()
+        version_bits_size = len(version_bits) - 1
+        size = len(self._matrix) - 1
+        offset = 0
+        # assign the bits as per 1)
+        for col in range(8):
+            self._matrix[8][size - col] = int(version_bits[version_bits_size - offset])
+            offset += 1
+        for row in range(7, -1, -1):
+            if self._matrix[size - row][8] == QRCodeConstants.DARK_MODULE:
+                # dark module at (4 * v + 9, 8)
+                continue
+            self._matrix[size - row][8] = int(version_bits[version_bits_size - offset])
+            offset += 1
+
+        # assign the bits as per 2)
+        offset = 0
+        for row in range(8):
+            if self._matrix[row][8] != QRCodeConstants.RESERVED_CONTROL_MODULES:
+                # timing pattern
+                continue
+            self._matrix[row][8] = int(version_bits[offset])
+            offset += 1
+        for col in range(7, -1, -1):
+            if self._matrix[8][col] != QRCodeConstants.RESERVED_CONTROL_MODULES:
+                continue
+            self._matrix[8][col] = int(version_bits[offset])
+            offset += 1
+
     def generate_matrix(self, encoded_input: bytes):
         """Method to generate the QR Code symbol with all the function patterns,
            data and error codewords
         """
         self.add_control_data()
-        self._store_restricted_modules()
+        self.store_restricted_modules()
         self.position_codewords(encoded_input)
+        masked_matrix = QRCodeMasker.apply_mask(self)
+        self._matrix = masked_matrix.get_masked_matrix()
+        self._position_bits()
         return self._matrix
 
     def create_qr_code(self, data: str):
@@ -470,6 +514,22 @@ class QRCodeImage:
         bytes_data = self._encoder.generate_encoded_data(data)
         bytes_data = bin(int(bytes_data, base=2))[2:]
         self.generate_matrix(bytes_data)
+        return self._matrix
+
+    def create_qr_code_up_to_mask(self, data: str):
+        """Method to create the QR code symbol up to the mask 
+           algorithm execution
+
+        Returns:
+            masked_qr_symbol.get_masked_matrix() (List[List[int]]): 
+            QR Code data matrix with mask applied
+            
+        """
+        bytes_data = self._encoder.generate_encoded_data(data)
+        bytes_data = bin(int(bytes_data, base=2))[2:]
+        self.add_control_data()
+        self.store_restricted_modules()
+        self.position_codewords(bytes_data)
         # delegate the mask implementation to the corresponding class
         masked_qr_symbol = QRCodeMasker.apply_mask(self)
-        return masked_qr_symbol
+        return masked_qr_symbol.get_masked_matrix()

@@ -222,8 +222,8 @@ class QRCodeMask():
        the mask pattern, as well as teh ID of the mask used (ranging from 0 to 7 - 111)
     """
 
-    def __init__(self, data: List[List[int]], mask_id: int):
-        self._mask_id = mask_id
+    def __init__(self, data: List[List[int]], mask_id: bin):
+        self._mask_id = bin(mask_id) if isinstance(mask_id, int) else mask_id
         self._data = data
 
     def get_masked_matrix(self):
