@@ -29,7 +29,10 @@ class QRCodeImage:
        within the data area of the QR code symbol.
     """
 
-    def __init__(self, version: int, encoder: QRCodeEncoder, format_info: QRCodeFormatInfoEncoder):
+    def __init__(self, version: int, 
+                       encoder: QRCodeEncoder, 
+                       format_info: QRCodeFormatInfoEncoder,
+                       module_size: int):
         """Initializes the QRCodeImage class by assigning a whiteboard
            full blank data matrix for the qr code image.
            the notation that this class follows is the same terminology 
@@ -49,6 +52,7 @@ class QRCodeImage:
         self._qr_code_format_info = format_info
         # Add 31/07/2025 - for better calculation of the mask patterns (See Section 7.8)
         self._restricted_modules_pos = set()
+        self._module_size = module_size
 
     def _init_matrix(self, version: int):
         """ Method to construct the matrix that will contain all modules and patters as 
@@ -487,9 +491,23 @@ class QRCodeImage:
             self._matrix[8][col] = int(version_bits[offset])
             offset += 1
 
+    def _add_quiet_zone(self):
+        """ Method to add quiet zone to the image as per section 9.1
+        """
+        MIN_QUIET_ZONE = self._module_size * 4
+        # multiply size by 2 to reflect the quiet zone in all four borders
+        size = len(self._matrix) + (MIN_QUIET_ZONE * 2)
+        matrix_with_qz = [[0 for _ in range(size)] for _ in range(size)]
+        for row in range(size):
+            for col in range(size):
+                if (MIN_QUIET_ZONE <= row < size - MIN_QUIET_ZONE and
+                    MIN_QUIET_ZONE <= col < size - MIN_QUIET_ZONE):
+                    matrix_with_qz[row][col] = self._matrix[row - MIN_QUIET_ZONE][col - MIN_QUIET_ZONE]
+        return matrix_with_qz
+
     def generate_matrix(self, encoded_input: bytes):
-        """Method to generate the QR Code symbol with all the function patterns,
-           data and error codewords
+        """Method to generate the full QR Code symbol with all the function patterns,
+           data and error codewords, format information and quiet zone.
         """
         self.add_control_data()
         self.store_restricted_modules()
@@ -497,6 +515,8 @@ class QRCodeImage:
         masked_matrix = QRCodeMasker.apply_mask(self)
         self._matrix = masked_matrix.get_masked_matrix()
         self._position_bits()
+        matrix_with_qz = self._add_quiet_zone()
+        self._matrix = matrix_with_qz
         return self._matrix
 
     def create_qr_code(self, data: str):
