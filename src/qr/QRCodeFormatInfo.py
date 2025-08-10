@@ -13,9 +13,20 @@ class QRCodeFormatInfoEncoder:
        the format information
     """
 
-    def __init__(self, mask_id: int, ecl_indicator: QRErrorCorrectionLevel):
-        self.mask_id = bin(mask_id)[2:]
+    def __init__(self, ecl_indicator: QRErrorCorrectionLevel):
+        self.mask_id = None
         self.ecl_indicator = ecl_indicator.get_binary_indicator()
+
+    def set_mask(self, mask: str):
+        """ Method to set tue mask id after the best mask is calculated
+
+        Args:
+            mask (str): Mask id from Section 7.8.2, in a bin string format
+        """
+        if len(mask) != 3 or not 0 <= int(mask, base=2) <= 7:
+            raise ValueError(("Invalid mask id. It needs to be a valid bit"
+                              "string denoting a value in the range [0, 7]"))
+        self.mask_id = mask
 
     def get_data_bits(self):
         """Getter method of the 5-bit data string of the format info.
@@ -62,14 +73,22 @@ class QRCodeFormatInfoEncoder:
                  division procedure by the generator polynomial
         """
         X_10_RESULT = '0000000000'
+        XOR_BINARY_STRING = '101010000010010'
         generator_polynomial = '10100110111'
         data_bits = self.get_data_bits()
         # note that this is equivalent to multiplying the 5-bit data polynomial by x^10, as all coefficients are either 0 or 1.
         data_polynomial = (data_bits+ X_10_RESULT).lstrip('0')
         #generator_polynomial += "".join(['0' for _ in range(len(data_polynomial) - len(generator_polynomial))])
         division_quocient = self.divide_format_polynomials(data_polynomial, generator_polynomial)
-        return data_bits + division_quocient
-    
+        mask_string = data_bits + division_quocient
+        xor_mask_string = []
+        for index, mask_string_char in enumerate(mask_string):
+            if mask_string_char != XOR_BINARY_STRING[index]:
+                xor_mask_string.append("1")
+            else:
+                xor_mask_string.append("0")
+        return "".join(xor_mask_string)
+
     def divide_format_polynomials(self, dividend: str, divisor: str):
         """ Method to divide the format data polynomial by the generator polynomial """
         MIN_DIVISOR_SIZE = 10

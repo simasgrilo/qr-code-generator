@@ -5,7 +5,6 @@ from src.qr.QRCodeImage import QRCodeImage
 from src.qr.QRCodeEncoder import QRCodeEncoder
 from src.qr.QRCodeInputAnalyzer import QRCodeInputAnalyzer
 from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
-from src.qr.QRCodeDataMask import QRCodeMasker
 from src.qr.QRCodeFormatInfo import QRCodeFormatInfoEncoder
 
 class TestQRCodeSymbolVer4(unittest.TestCase):
@@ -15,7 +14,7 @@ class TestQRCodeSymbolVer4(unittest.TestCase):
     def setUp(self):
 
         self.qr_encoder = QRCodeEncoder(4, QRErrorCorrectionLevel.L, QRCodeInputAnalyzer())
-        qr_format_encoder = QRCodeFormatInfoEncoder(getattr(self.qr_encoder, 'version'), getattr(self.qr_encoder, 'error_correction_level'))
+        qr_format_encoder = QRCodeFormatInfoEncoder(getattr(self.qr_encoder, 'error_correction_level'))
         self._qr_code_gen = QRCodeImage(4, self.qr_encoder, qr_format_encoder, 1)
 
     def test_generate_control_data_in_matrix(self):
@@ -152,8 +151,8 @@ class TestQRCodeSymbolVer4(unittest.TestCase):
     def test_calculate_format_info(self):
         """ Method to test the BCH(15,5) format encoding algorithm as in Section 7.9 of the ISO
         """
-        qr_code_format_calc = QRCodeFormatInfoEncoder(getattr(self.qr_encoder, 'version'),
-                                                      getattr(self.qr_encoder, 'error_correction_level'))
+        qr_code_format_calc = QRCodeFormatInfoEncoder(QRErrorCorrectionLevel.L)
+        qr_code_format_calc.set_mask('100')
         expected = '110011000101111'
         self.assertEqual(qr_code_format_calc.get_format_information_bits(), expected)
 
@@ -161,8 +160,8 @@ class TestQRCodeSymbolVer7(unittest.TestCase):
     """ Test class to perform tests with QR Code Version 6"""
     def setUp(self):
         qr_encoder = QRCodeEncoder(7, QRErrorCorrectionLevel.H, QRCodeInputAnalyzer())
-        qr_format_encoder = QRCodeFormatInfoEncoder(getattr(qr_encoder, 'version'),
-                                                    getattr(qr_encoder, 'error_correction_level'))
+        qr_format_encoder = QRCodeFormatInfoEncoder(getattr(qr_encoder, 'error_correction_level'))
+        qr_format_encoder.set_mask('001')
         self._qr = QRCodeImage(7, qr_encoder, qr_format_encoder, 1)
 
     def test_qr_code_alignemnt_multiple(self):
