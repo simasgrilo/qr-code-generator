@@ -335,7 +335,7 @@ class QRCodeEncoder:
             counter += 1
         return transformed_encoded_input
 
-    def generate_blocks(self, encoded_input: bytes):
+    def generate_blocks(self, encoded_input: str):
         """
         Method to process the encoded input, generate error codewords and then concatenate 
         them in blocks to prepare the QR code image generation.
@@ -419,7 +419,7 @@ class QRCodeEncoder:
         resulting_blocks_bin = [ bin(data)[2:].zfill(8) for data in resulting_blocks]
         padding = ['0' for _ in range(self.get_remainder_bits())]
         resulting_blocks_bin.append("".join(padding))
-        return bytes("".join(resulting_blocks_bin), encoding='utf-8')
+        return "".join(resulting_blocks_bin)
 
     def generate_encoded_data(self, input_str: str):
         """Method to encode a input string in the correct data format, generate its codewords

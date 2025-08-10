@@ -29,13 +29,13 @@ class QRErrorCorrectionLevel(enum.Enum):
 
     def get_number_of_data_codewords(self, version: int):
         """
-        Method to retrieve the codeword per error correction level
+        Method to retrieve the codeword per error correction level (as in Table 7)
         Args:
             version (int): version of the QR code being generated.
         """
         codeword_map = {
-            1:  {'L': 55,  'M': 44,  'Q': 34,  'H': 26},
-            2:  {'L': 55,  'M': 44,  'Q': 34,  'H': 26},
+            1:  {'L': 19,  'M': 16,  'Q': 13,  'H': 9},
+            2:  {'L': 34,  'M': 28,  'Q': 22,  'H': 16},
             3:  {'L': 55,  'M': 44,  'Q': 34,  'H': 26},
             4:  {'L': 80,  'M': 64,  'Q': 48,  'H': 36},
             5:  {'L': 108, 'M': 86,  'Q': 62,  'H': 46},
