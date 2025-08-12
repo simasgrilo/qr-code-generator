@@ -479,16 +479,17 @@ class QRCodeImage:
 
         # assign the bits as per 2)
         offset = 0
-        for row in range(8):
+        # range to 9 to skip the timing pattern module that will be found
+        for row in range(9):
             if self._matrix[row][8] != QRCodeConstants.RESERVED_CONTROL_MODULES:
                 # timing pattern
                 continue
-            self._matrix[row][8] = int(version_bits[offset])
+            self._matrix[row][8] = int(version_bits[version_bits_size - offset])
             offset += 1
         for col in range(7, -1, -1):
             if self._matrix[8][col] != QRCodeConstants.RESERVED_CONTROL_MODULES:
                 continue
-            self._matrix[8][col] = int(version_bits[offset])
+            self._matrix[8][col] = int(version_bits[version_bits_size - offset])
             offset += 1
 
     def _add_quiet_zone(self):
@@ -514,6 +515,7 @@ class QRCodeImage:
         self.position_codewords(encoded_input)
         masked_matrix = QRCodeMasker.apply_mask(self)
         self._matrix = masked_matrix.get_masked_matrix()
+        self._qr_code_format_info.set_mask(masked_matrix.get_mask_id())
         self._position_bits()
         matrix_with_qz = self._add_quiet_zone()
         self._matrix = matrix_with_qz
@@ -532,7 +534,6 @@ class QRCodeImage:
         # b) consider it as a bytestream (or integers)
         # Therefore, the conversion below is done to consider a bit stream.
         bytes_data = self._encoder.generate_encoded_data(data)
-        bytes_data = bin(int(bytes_data, base=2))[2:]
         self.generate_matrix(bytes_data)
         return self._matrix
 
