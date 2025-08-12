@@ -172,7 +172,7 @@ class QRCodeEncoder:
         except KeyError as exc:
             raise KeyError(f"Invalid character: {character}. Supported characters are alphanumeric characters and the symbols $, %, *, +, -, ., /,:, and space.") from exc   
 
-    def encode_alphanumeric(self, input_str: str, char_count_indicator: int, mode_indicator: bytes) -> bytes:
+    def encode_alphanumeric(self, input_str: str, char_count_indicator: bytes, mode_indicator: bytes) -> bytes:
         """
         Encode alphanumeric data. See section 7.4.4. of ISO for details.
         From the specs, if the length of the input string is odd, the last character value is encoded as a 6-bit binary number.
@@ -184,6 +184,7 @@ class QRCodeEncoder:
         Returns:
             bytes: a byte string with the encoded alphanumeric data.
         """
+        # 06/08/2025 - urgent fix - missed char_count_indicator and mode_indicator in encoding.
         encoded_data = []
         index = 0
         MULTIPLIER = 45  # The multiplier for alphanumeric encoding
@@ -200,7 +201,12 @@ class QRCodeEncoder:
             else:
                 encoded_data.append(bin(char_values[0])[2:].zfill(6))
             index += 2
-        return bytes("".join(encoded_data), encoding='utf-8')
+        bits_num_input_chars = bin(len(input_str))[2:]
+        num_input_data_chars = bytes(bits_num_input_chars.zfill(char_count_indicator), encoding='utf-8')
+        resulting_encoded_data = (mode_indicator +
+                                  num_input_data_chars +
+                                  bytes("".join(encoded_data), encoding='utf-8'))
+        return resulting_encoded_data
     
     
     def encode_bytes(self, input_str: str, char_count_indicator: int, mode_indicator: bytes ) -> bytes:
@@ -224,9 +230,9 @@ class QRCodeEncoder:
         encoded_data = []
         for char in input_str:
             encoded_data.append(bin(ord(char))[2:].zfill(8))
-        input_length = bytes(bin(len(input_str))[2::], encoding='utf-8')
-        bits_char_count_indicator = bytes(bin(char_count_indicator)[2::].zfill(char_count_indicator), encoding='utf-8')
-        return mode_indicator + bits_char_count_indicator + input_length + bytes("".join(encoded_data), encoding='utf-8')
+        input_length = len(input_str)
+        bits_char_count_indicator = bytes(bin(input_length)[2::].zfill(char_count_indicator), encoding='utf-8')
+        return mode_indicator + bits_char_count_indicator + bytes("".join(encoded_data), encoding='utf-8')
 
 
     def encode_kanji(self, input_str: str, char_count_indicator: int, mode_indicator: bytes):
@@ -307,9 +313,12 @@ class QRCodeEncoder:
         remainder_of_zeroes = codeword_per_version_and_ecl - len(encoded_input)
         transformed_encoded_input = encoded_input
         terminator_zeroes = bytes()
-        if 0 < remainder_of_zeroes <= 4:
+        if 0 <= remainder_of_zeroes <= 4:
             # 1) add the codeword zeroes, up to 0000
             terminator_zeroes = bytes("".join(["0" for _ in range(remainder_of_zeroes)]), encoding="utf-8")
+        else:
+            #fix: according to ISO (Section )
+            terminator_zeroes = b'0000'
         transformed_encoded_input += terminator_zeroes
         # 2) add the remainder of padding zeroes to fit a whole byte:
         remainder_for_whole_byte = 8 - (len(transformed_encoded_input) % 8)
@@ -325,9 +334,8 @@ class QRCodeEncoder:
                 transformed_encoded_input += PAD_CODEWORD_1
             counter += 1
         return transformed_encoded_input
-    
 
-    def generate_blocks(self, encoded_input: bytes):
+    def generate_blocks(self, encoded_input: str):
         """
         Method to process the encoded input, generate error codewords and then concatenate 
         them in blocks to prepare the QR code image generation.
@@ -411,7 +419,7 @@ class QRCodeEncoder:
         resulting_blocks_bin = [ bin(data)[2:].zfill(8) for data in resulting_blocks]
         padding = ['0' for _ in range(self.get_remainder_bits())]
         resulting_blocks_bin.append("".join(padding))
-        return bytes("".join(resulting_blocks_bin), encoding='utf-8')
+        return "".join(resulting_blocks_bin)
 
     def generate_encoded_data(self, input_str: str):
         """Method to encode a input string in the correct data format, generate its codewords

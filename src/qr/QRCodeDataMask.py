@@ -40,7 +40,6 @@ class QRCodeMasker:
         qr_code_symbol = qr_code_ref.get_matrix()
         lowest_penalty = sys.maxsize
         best_mask = None
-        best_mask_id = -1
         for mask in range(8):
             mask_matrix = QRCodeMasker._get_mask_matrix(mask, qr_code_ref)
             for row in range(len(mask_matrix)):
@@ -65,13 +64,13 @@ class QRCodeMasker:
         for row in range(rows):
             for col in range(cols):
                 if (mask == 0 and (row + col) % 2 == 0
-                    or mask == 1 and row % 2 == 0
-                    or mask == 2 and col % 3 == 0
-                    or mask == 3 and (row + col) % 3 == 0
-                    or mask == 4 and ((row // 2) + (col // 3)) % 2 == 0
-                    or mask == 5 and (((row * col) % 2) + ((row * col) % 3)) == 0
-                    or mask == 6 and (((row * col) % 2) + ((row * col) % 3)) % 2 == 0
-                    or mask == 7 and ((row + col) % 2 + ((row * col) % 3)) % 2 == 0):
+                    or (mask == 1 and row % 2 == 0)
+                    or (mask == 2 and col % 3 == 0)
+                    or (mask == 3 and (row + col) % 3 == 0)
+                    or (mask == 4 and ((row // 2) + (col // 3)) % 2 == 0)
+                    or (mask == 5 and (((row * col) % 2) + ((row * col) % 3)) == 0)
+                    or (mask == 6 and (((row * col) % 2) + ((row * col) % 3)) % 2 == 0)
+                    or (mask == 7 and ((row + col) % 2 + ((row * col) % 3)) % 2 == 0)):
                     mask_matrix[row][col] = 1
         return mask_matrix
 
@@ -223,7 +222,7 @@ class QRCodeMask():
     """
 
     def __init__(self, data: List[List[int]], mask_id: bin):
-        self._mask_id = bin(mask_id) if isinstance(mask_id, int) else mask_id
+        self._mask_id = bin(mask_id)[2:].zfill(3) if isinstance(mask_id, int) else mask_id
         self._data = data
 
     def get_masked_matrix(self):
