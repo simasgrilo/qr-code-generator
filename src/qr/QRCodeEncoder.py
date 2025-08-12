@@ -230,9 +230,9 @@ class QRCodeEncoder:
         encoded_data = []
         for char in input_str:
             encoded_data.append(bin(ord(char))[2:].zfill(8))
-        input_length = bytes(bin(len(input_str))[2::], encoding='utf-8')
-        bits_char_count_indicator = bytes(bin(char_count_indicator)[2::].zfill(char_count_indicator), encoding='utf-8')
-        return mode_indicator + bits_char_count_indicator + input_length + bytes("".join(encoded_data), encoding='utf-8')
+        input_length = len(input_str)
+        bits_char_count_indicator = bytes(bin(input_length)[2::].zfill(char_count_indicator), encoding='utf-8')
+        return mode_indicator + bits_char_count_indicator + bytes("".join(encoded_data), encoding='utf-8')
 
 
     def encode_kanji(self, input_str: str, char_count_indicator: int, mode_indicator: bytes):
