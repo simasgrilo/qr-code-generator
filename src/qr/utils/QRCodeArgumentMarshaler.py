@@ -1,7 +1,13 @@
 """Utility Module to validate and process each of the arguments passed in the CLI"""
 
 from typing import List
-
+from src.qr.QRCodeImage import QRCodeImage
+from src.qr.QRCodeEncoder import QRCodeEncoder
+from src.qr.QRCodeInputAnalyzer import QRCodeInputAnalyzer
+from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
+from src.qr.QRCodeFormatInfo import QRCodeFormatInfoEncoder
+from src.qr.QRCode import QRCode
+from src.qr.utils.QRCodeFactory import QRCodeFactory
 
 class QRCodeArgumentMarshaler:
     """Utility class to validate, process and marshal the arguments 
@@ -29,11 +35,23 @@ class QRCodeArgumentMarshaler:
                               "Please check documentation for more details"))
         args = [cmd_input[0], cmd_input[1]]
         error_correction_level = cmd_input[2]
-        args.append(error_correction_level)
         if error_correction_level not in ['L','Q','M','H']:
             raise ValueError("Invalid error correction level indicator. Values are L, Q, M or H")
+        args.append(QRErrorCorrectionLevel(error_correction_level))
         version = int(cmd_input[3])
         args.append(version)
         if not 1 <= version <= 40:
             raise ValueError("Invalid version. only values from 1 to 40 are accepted")
         return args
+    
+    @staticmethod
+    def generate_qr_code(cmd_input: List[str]):
+        """Method to create the QRC
+
+        Args:
+            cmd_input (List[str]): _description_
+        """
+        data, path, error_correction_level, version  = QRCodeArgumentMarshaler.process_args(cmd_input)
+        qr = QRCodeFactory.create_qr_code_obj(version, error_correction_level, path)
+        qr.create_qr_code(data)
+
