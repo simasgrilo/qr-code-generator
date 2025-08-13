@@ -4,13 +4,14 @@ from typing import List
 from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
 from src.qr.utils.QRCodeFactory import QRCodeFactory
 
+
 class QRCodeArgumentMarshaler:
     """Utility class to validate, process and marshal the arguments 
        to create a QR Code object
     """
 
     @staticmethod
-    def process_args(cmd_input: List[str]):
+    def process_args(cmd_input: List[str]) -> list:
         """Method to validate the arguments
            provided to the CLI tool
            they need to follow the following syntax:
@@ -42,7 +43,7 @@ class QRCodeArgumentMarshaler:
         return args
 
     @staticmethod
-    def generate_qr_code(cmd_input: List[str]):
+    def generate_qr_code(cmd_input: List[str]) -> None:
         """Method to create the QRC
 
         Args:

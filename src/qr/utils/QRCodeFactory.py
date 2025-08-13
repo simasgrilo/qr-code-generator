@@ -1,12 +1,15 @@
 """Module to create QR codes and its dependencies (like input analyzer, encoder et al.)
 """
 
+from typing import Tuple
+
 from src.qr.QRCode import QRCode
 from src.qr.QRCodeImage import QRCodeImage
 from src.qr.QRCodeEncoder import QRCodeEncoder
 from src.qr.QRCodeInputAnalyzer import QRCodeInputAnalyzer
 from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
 from src.qr.QRCodeFormatInfo import QRCodeFormatInfoEncoder
+
 
 class QRCodeFactory:
     """Factory class for QR Code objects
@@ -34,7 +37,7 @@ class QRCodeFactory:
         return qr
 
     @staticmethod
-    def determine_min_qr_code_size(data: str):
+    def determine_min_qr_code_size(data: str) -> Tuple[int, QRErrorCorrectionLevel] | None:
         """Method to determine automatically the minimum QR code version and ECL
            that fits the inpput data, based on the number of data bits that the
            encoded input has, based on the values of Table 7 of the ISO.
@@ -52,8 +55,13 @@ class QRCodeFactory:
         encoded_data = phantom_encoder.encode_data_into_bit_stream(data)
         number_data_bits = len(encoded_data)
         error_correction_codes = [ qr_ecl for qr_ecl in QRErrorCorrectionLevel ]
-        for version in range(1, 40):
+        # iterate over the versions and possible error correction codes - See
+        # Table 7 in ISO 18004 for more details
+        min_version, max_version = (1, 41) #41 so the range below goes up to 40
+        for version in range(min_version, max_version):
             for error_corr_code in error_correction_codes:
                 if number_data_bits <= error_corr_code.get_numbers_of_bits_per_codewords(version):
                     return (version, error_corr_code)
-        return None
+        raise ValueError(("No suitable version found."
+                          "Please check whether your data fits into the max limit size")
+                        )
