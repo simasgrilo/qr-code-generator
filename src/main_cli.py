@@ -10,8 +10,10 @@ def main():
         and a CLI tool is no longer to be supported
     
         usage:
-        python main.py "HELLO WORLD" "c:\\my_files\\qr_code.png" L 4 or
-        python main.py "HELLO WORLD "c:\\my_files\\qr_code.png" - to be supported soon
+        - python main.py "HELLO WORLD" "c:\\my_files\\qr_code.png" L 4
+        - python main.py "HELLO WORLD "c:\\my_files\\qr_code.png"
+        the second option will determine automatically the minimum QR code version
+        and error correction code that fits the message to be encoded
     """
     args = sys.argv[1::]
     QRCodeArgumentMarshaler.generate_qr_code(args)
