@@ -14,15 +14,15 @@ class QRCodeInputAnalyzer:
 
     def analyse(self, input_string: str) -> str:
         """Analyze the input string and return the type of QR code it can generate."""
-        #TODO this can be better implemented without a set of ifs...
-        if self.is_numeric(input_string):
-            return "Numeric"
-        if self.is_alphanumeric(input_string):
-            return "Alphanumeric"
-        if self.is_byte(input_string):
-            return "Byte"
-        if self.is_kanji(input_string):
-            return "Kanji"
+        checks = [
+                    (self.is_numeric, "Numeric"),
+                    (self.is_alphanumeric, "Alphanumeric"),
+                    (self.is_byte, "Byte"),
+                    (self.is_kanji, "Kanji")
+        ]
+        for check_func, res in checks:
+            if check_func(input_string):
+                return res
         return "Unknown"
 
     def is_numeric(self, input_string: str) -> bool:
@@ -33,12 +33,11 @@ class QRCodeInputAnalyzer:
         """
         Check whether the input string comprises only alphanumeric characters.
         Args:
-            input_string (str): _description_
+            input_string (str): Data input to be encoded
 
         Returns:
-            bool: _description_
+            bool: a boolean value denoting whether the input is alphanumeric
         """
-        input_string = input_string.upper() # to handle lowercase letters
         alphanumeric_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#%*+-./;: "
         return all(char in alphanumeric_chars for char in input_string)
 
@@ -46,7 +45,7 @@ class QRCodeInputAnalyzer:
         """
         Check whether the input string fits in the original byte set by converting the current char to its ordinal byte representation value
         Args:
-            input_string (str): _description_
+            input_string (str): Data input to be encoded
 
         Returns:
             bool: whether all elements in the input string are in the range of 0 to 127

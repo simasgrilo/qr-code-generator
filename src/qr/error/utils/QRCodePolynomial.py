@@ -231,18 +231,29 @@ class PolynomialOperations:
         data_codewords_polynomial = PolynomialOperations.multiply(data_polynomial_alpha_notation, x_exponent_normalizer)
         divisor_data_codewords_qty = len(dividend.get_coefficients())
         difference_generator_and_data_codewords = data_codewords_polynomial.get_coefficients()[0].get_x_exponent() - error_codeword_max_exponent
+        # note: before each step of the division, the coefficients of the ORIGINAL generated polynomial will be used in the 
+        # NORMALIZED generator polynomial (i.e., the one multiplied by x^k, where k is the lead exponent of
+        # the message polynomial after x^n
+        divisor_generator_polynomial = PolynomialOperations.multiply(divisor, AlphaPolynomial(Term(Alpha(0), difference_generator_and_data_codewords)))
         for division in range(0, divisor_data_codewords_qty):
-            # note: at each step of the division, the coefficients of the ORIGINAL generated polynomial will be used in the 
-            # NORMALIZED generator polynomial (i.e., the one multiplied by x^k, where k is the lead exponent of
-            # the message polynomial after x^n
-            divisor_generator_polynomial = PolynomialOperations.multiply(divisor, AlphaPolynomial(Term(Alpha(0), difference_generator_and_data_codewords - division)))
-            # at this point, both polynomials will have the same first n x exponents, where n is the number of error codewords.
-            # we can start the multiplication procedure which is part of the long polynomial divisor (so we can discard the lead term):
-            # the following step needs to be done number of data codewords times (with respect to Step 2)
-            # multiply the generator polynomial by the lead term in the data polynomial. both are already in Alpha notation at this point, so no problem:
+
+            # at this point, both polynomials will have the same first n x exponents, 
+            # where n is the number of error codewords.
+            # we can start the multiplication procedure which is part of the 
+            # long polynomial divisor (so we can discard the lead term):
+            # the following step needs to be done number of data codewords times 
+            # (with respect to Step 2)
+            # multiply the generator polynomial by the lead term in the data polynomial
+            # if it's the initial step, else multiply by
+            # the lead term of the resulting XOR of the previous step.
+            # erick >> erro aqui: o produto pelo lead term do dado só deve ocorrer na multiplicação inicial.
             data_codewords_polynomial_lead = data_codewords_polynomial.get_coefficients()[0]
             lead_coefficient_alpha = data_codewords_polynomial_lead.get_coefficient()
-            divisor_generator_polynomial = PolynomialOperations.multiply(divisor_generator_polynomial, AlphaPolynomial(Term(lead_coefficient_alpha, 0)))
+            if division > 0:
+                lead_xor_term_alpha = PolynomialOperations.convert_int_to_alpha(xor_int_polynomials).get_coefficients()[0]
+                lead_coefficient_alpha = lead_xor_term_alpha.get_coefficient()
+            divisor_generator_polynomial = PolynomialOperations.multiply(divisor, AlphaPolynomial(Term(lead_coefficient_alpha, 0)))
+            # << erick
             # convert both polynomials to integer
             data_codewords_polynomial_int = PolynomialOperations.convert_alpha_to_int(data_codewords_polynomial)
             divisor_generator_polynomial_int = PolynomialOperations.convert_alpha_to_int(divisor_generator_polynomial)
@@ -273,8 +284,8 @@ class PolynomialOperations:
             term_polynomial_1 = terms_polynomial_1[index]
             term_polynomial_2 = terms_polynomial_2[index]
             xor_coefficients = term_polynomial_1.get_coefficient() ^ term_polynomial_2.get_coefficient()
-            if xor_coefficients > 0:
-                result.append(Term(xor_coefficients, term_polynomial_1.get_x_exponent()))
+            #if xor_coefficients > 0:
+            result.append(Term(xor_coefficients, term_polynomial_1.get_x_exponent()))
             index += 1
         # add the remainder of the polynomials:
         while index < len(terms_polynomial_1):
@@ -285,7 +296,7 @@ class PolynomialOperations:
             term_polynomial_2 = terms_polynomial_2[index]
             result.append(Term(term_polynomial_2.get_coefficient(), term_polynomial_2.get_x_exponent()))
             index += 1
-        return IntPolynomial(result)
+        return IntPolynomial(result[1::])
 
 
 
