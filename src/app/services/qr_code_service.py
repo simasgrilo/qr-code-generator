@@ -37,11 +37,9 @@ def create_qr_code(qr_code_model: QRCodeImage,
             version = calc_version
         encoder = QRCodeFactory.create_qr_code_obj(version, ecl, file_path)
         encoder.create_qr_code(data)
-        # with open(file_path, "rb") as fp:
-        #     return fp
     except OSError as exc:
         raise HTTPException(status_code=500,
-                            detail=f'error in reading file at {file_path}.' 
+                            detail=f'error in reading file at {file_path}.'
                                     'Please contact your admin') from exc
     except ValueError as exc:
         raise HTTPException(status_code=400,
