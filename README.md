@@ -9,10 +9,12 @@ QR Codes were invented by Denso Wave, a japanese company, to label car parts bac
 The emphasis of this application is to implement the following products:
 
 - [x] A QR code generation framework according with ISO 18004:2024
-- [] A webapp to allow users to generate QR codes as necessary
-- [] A FastAPI set of RESTful APIs to be the backbone of the webapp aforementioned
+- [x] A FastAPI set of RESTful APIs to be the backbone of the webapp aforementioned
+- [ ] A webapp to allow users to generate QR codes as necessary
 
-Currently, the application can be used in CLI as a standard Python app with the following arguments:
+Currently, the application can be used in CLI or as a local FastAPI server.
+
+To run as a standard Python app with the following arguments:
 
 ```Python
   # to create a QR code encoding the string HELLO WORLD in the directory, with error correction level L, version 4:
@@ -38,6 +40,12 @@ Therefore, if the app is executed with `main_cli.py https://www.google.com/ qr_c
 While executing it with `main_cli.py https://www.google.com/ qr_code.png L 4` yields the following QR code:
 
 <img src="assets/qr_code_sample_4_L.png" width=100 heigh=100>
+
+To start a FastAPI server locally (for now) and start making requests, make sure you've got fastapi instaled as per the [official instructions](https://fastapi.tiangolo.com/tutorial/first-steps/) and run
+
+```
+fastapi dev main_app.py
+```
 
 ## Stack used
 
