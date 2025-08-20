@@ -10,6 +10,7 @@ packages = [{include = "qr_code_generator"}]
 python = "^3.11"
 fastapi = "^0.115.12"
 pillow = "^11.3.0"
+httpx = "^0.28.1"
 
 
 [build-system]
