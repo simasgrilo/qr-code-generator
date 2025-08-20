@@ -28,12 +28,22 @@ class TestBasicAPIOperations(unittest.TestCase):
 	        "data": "test code"
         }
         qr_response = client.post("/qr", json=body)
-        self.assertAlmostEquals(qr_response.status_code, 200)
+        self.assertEqual(qr_response.status_code, 200)
         with Image.open(self.known_good_image_path) as img_expected, \
              Image.open(BytesIO(qr_response.content)) as response_image:
             img_expected = img_expected.convert('1')
             response_image = response_image.convert('1')
             diff_img = ImageChops.difference(response_image, img_expected).getbbox()
         self.assertIsNone(diff_img, "Generated image does not match expected image")
-        # os.remove(self.created_img_path)
         print(qr_response)
+
+    def test_create_qr_code_invalid_payload(self):
+        """ Test method to confirm that an invalid payload
+            without data which is a mandatory field returns
+            HTTP status code 422 - Unprocessable entity
+        """
+        body = {
+	        "notvalidfield": "invalid value"
+        }
+        qr_response = client.post("/qr", json=body)
+        self.assertEqual(qr_response.status_code, 422)
