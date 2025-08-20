@@ -9,6 +9,7 @@ QR Codes were invented by Denso Wave, a japanese company, to label car parts bac
 The emphasis of this application is to implement the following products:
 
 - [x] A QR code generation framework according with ISO 18004:2024
+
 - [x] A FastAPI set of RESTful APIs to be the backbone of the webapp aforementioned
 - [ ] A webapp to allow users to generate QR codes as necessary
 
