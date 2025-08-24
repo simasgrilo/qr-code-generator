@@ -4,16 +4,33 @@ import uuid #for now, generates the temp file on disk with UUID.
 import os
 import tempfile
 from pathlib import Path
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse, Response
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 from src.app.models.qr_code_image import QRCodeImage
 from src.app.services.qr_code_service import create_qr_code
+from src.app.ratelim.service.rate_limiter_service import RateLimiterService
+from src.app.ratelim.models.rate_limit_config import RateLimitConfig
+from src.app.ratelim.service.redis_manager import RedisManager
 
 router = APIRouter()
 
 FILE_PATH = os.path.join(Path(__file__).parent.parent, "static")  #TODO: set this up in a config file...
 
-@router.post("/qr")
+data_store = RedisManager.create()
+cooldown_time = int(os.getenv("RATE_LIMITER_COOLDOWN"))
+num_requests = int(os.getenv("RATE_LIMITER_REQUESTS"))
+activity = os.getenv("RATE_LIMITER_QR_ACTIVITY")
+
+rate_limit_config = RateLimitConfig(data_store=data_store,
+                                    cooldown_time=cooldown_time,
+                                    num_requests=num_requests,
+                                    activity=activity)
+
+#rate limiting is set by route:
+rate_limiter = RateLimiterService.get_instance(RedisManager.create())
+
+@router.post("/qr", dependencies=[Depends(rate_limiter.check_rate_limiting)])
 async def generate_qr_code(payload: QRCodeImage):
     """ Generate a QR Code based on the request data
 
@@ -25,7 +42,6 @@ async def generate_qr_code(payload: QRCodeImage):
         FileResponse: a binary descriptor of the QR code image generated
     """
     try:
-        # adds a uuid to filename to reduce collision chance with tempfile naming algorithm
         filename = f'{uuid.uuid4()}'
         file_data = None
         with tempfile.NamedTemporaryFile(prefix=filename, suffix='.png', dir=FILE_PATH) as file_dir:
@@ -36,4 +52,4 @@ async def generate_qr_code(payload: QRCodeImage):
     except (OSError, RuntimeError) as exc:
         return JSONResponse({
             "message": f'An error has occurred while processing your request: {exc.strerror}'
-        }, status_code=500)
+        }, status_code=HTTP_500_INTERNAL_SERVER_ERROR)
