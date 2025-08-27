@@ -17,5 +17,7 @@ def create_app(test_config: dict = None) -> FastAPI:
     app.include_router(qr_router(rate_limit_config))
     return app
 
+app = create_app()
+
 if __name__ == '__main__':
-    uvicorn.run(create_app())
+    uvicorn.run(app)
