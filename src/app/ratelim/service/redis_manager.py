@@ -4,8 +4,9 @@ import os
 # note: no redis.asyncio here. we need the
 # rate limiter check sync with the app
 from redis import Redis
+from src.app.ratelim.service.rate_limiter_intf import RateLimiterInterface
 
-class RedisManager:
+class RedisManager(RateLimiterInterface):
     """ Utility class to interface with Redis as the underlying data store
         required for decoupling and better testability of the Rate limiter
         service
@@ -47,7 +48,7 @@ class RedisManager:
         password = os.getenv("REDIS_PASSWORD")
         return RedisManager(redis_host, redis_port, username, password)
 
-class MockRedis:
+class MockRedis(RateLimiterInterface):
     def __init__(self):
         self.store = {}
 

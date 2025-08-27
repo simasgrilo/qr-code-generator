@@ -1,20 +1,20 @@
 """ A model to denote the entries that are expected in the Rate Limiter """
 
-import re
-from datetime import date
+import ipaddress
 from pydantic import BaseModel, AfterValidator, Field
 from typing_extensions import Annotated
+from typing import Union
 
 
-def check_application_server_ip(value: str):
+def validate_ipv4_request_address(value: str) -> str:
     """ Validation of whether the supplied IP is a valid IPv4
     Args:
         value (str): IPv4 from the server where the application is running
     """
-    regex = re.compile(r"^([1-9][0-9])|([1-2][1-9][1-5])\.([1-9]{1,3}\.){2}\.[1-9]{3}")
-    match_val = regex.match(value)
-    if not match_val:
-        raise ValueError(f'IP {value} is not a valid IP value')
+    try: 
+        ipaddress.IPv4Address(value)
+    except ipaddress.AddressValueError:
+        raise ValueError(f'IP {value} is not a valid IPv4 value')
     return value
 
 class RateLimiterModel(BaseModel):
@@ -27,6 +27,6 @@ class RateLimiterModel(BaseModel):
         BaseModel (pydantic.BaseModel): Basic model component of Pydantic module, to be
                                         extended and used as required by client applications
     """
-    ip: Annotated[str, AfterValidator(check_application_server_ip)]
+    ip: Annotated[str, AfterValidator(validate_ipv4_request_address)]
     requests_left: Annotated[int, Field(ge=0)]
-    eviction_date: Annotated[float, Field(type=int | float)]
+    eviction_date: Annotated[Union[int | float], Field(type=int | float)]
