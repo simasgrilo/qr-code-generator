@@ -2,10 +2,10 @@
 
 
 from fastapi import HTTPException
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR 
 from src.app.models.qr_code_image import QRCodeImage
 from src.qr.utils.QRCodeFactory import QRCodeFactory
 from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
-
 
 def create_qr_code(qr_code_model: QRCodeImage,
                    version: int | None,
@@ -38,9 +38,9 @@ def create_qr_code(qr_code_model: QRCodeImage,
         encoder = QRCodeFactory.create_qr_code_obj(version, ecl, file_path)
         encoder.create_qr_code(data)
     except OSError as exc:
-        raise HTTPException(status_code=500,
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f'error in reading file at {file_path}.'
                                     'Please contact your admin') from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400,
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
                             detail=f'Bad request. Check your input. Message={str(exc)}') from exc
