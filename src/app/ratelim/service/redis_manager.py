@@ -21,7 +21,7 @@ class RedisManager:
     def set(self, key: str, value: dict):
         """ Method to set the pair (key, value) in the Redis instance
         """
-        duck = self.redis.hset(key, mapping=value)
+        self.redis.hset(key, mapping=value)
 
     def get(self, key: object):
         """Method to check whether the request will be rate limited,
@@ -46,3 +46,13 @@ class RedisManager:
         username = os.getenv("REDIS_USERNAME")
         password = os.getenv("REDIS_PASSWORD")
         return RedisManager(redis_host, redis_port, username, password)
+
+class MockRedis:
+    def __init__(self):
+        self.store = {}
+
+    def get(self, key):
+        return self.store.get(key)
+
+    def set(self, key, value, ex=None):
+        self.store[key] = value

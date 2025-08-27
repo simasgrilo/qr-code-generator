@@ -1,7 +1,6 @@
 """ Utility class to manage parameters passed as the Rate limiter config"""
 
 from pydantic import BaseModel
-from src.app.ratelim.service.rate_limiter_intf import RateLimiterInterface
 
 class RateLimitConfig(BaseModel):
     """ Model class to model a Rate Limiter configuration object

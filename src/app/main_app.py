@@ -1,13 +1,21 @@
 """ Main entry point for the FastAPI RESTful API. """
+
 import uvicorn
-import dotenv
 from fastapi import FastAPI
-from src.app.routes.qr import router as qr_router
+from src.app.routes.qr import get_qr_router as qr_router
+from src.app.ratelim.service.rate_limit_config_builder import build_rate_limit_config
 
 
-dotenv.load_dotenv()
+def create_app(test_config: dict = None) -> FastAPI:
+    """Factory function to allow injection of test dependencies
+    Args:
+        test_config (dict): A dictionary containing rate limiter config
+                        and a mocked data_store for testing.
+    """
+    rate_limit_config = build_rate_limit_config(test_config)
+    app = FastAPI()
+    app.include_router(qr_router(rate_limit_config))
+    return app
 
-app = FastAPI()
-app.include_router(qr_router)
 if __name__ == '__main__':
-    uvicorn.run(app)
+    uvicorn.run(create_app())
