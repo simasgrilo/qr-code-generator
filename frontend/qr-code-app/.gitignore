@@ -1,12 +1,6 @@
-docs/*.txt
-.venv
-.vscode
-__pycache__/
-frontend/qr-code-gen/.next
-frontend/qr-code-gen/node_modules
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
 # dependencies
-frontend/qr-code-gen/node_modules
-frontend/qr-code-gen/.pnp
 /node_modules
 /.pnp
 .pnp.*
