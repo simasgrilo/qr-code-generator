@@ -28,9 +28,9 @@ export default function Dropdown() {
                 <FaCaretDown className="ml-2"/>
                 </button>
             {isOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-56
+                <div className="origin-top-right absolute right-0 mt-2 w-20
                                 rounded-md shadow-lg bg-white ring-1 ring-black
-                                ring-opacity-5 focus:outline-none">
+                                ring-opacity-5 focus:outline-none z-50">
                     <div className="py-1">
                         {versionList.map((version, index) => (
                             <a key={index} href="#" className="block px-4 py-2 text-sm text-black hover:bg-gray-100"
