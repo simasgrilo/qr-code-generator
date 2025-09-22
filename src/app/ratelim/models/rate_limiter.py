@@ -11,6 +11,8 @@ def validate_ipv4_request_address(value: str) -> str:
     Args:
         value (str): IPv4 from the server where the application is running
     """
+    if value.lower() == 'localhost':
+        return value
     try: 
         ipaddress.IPv4Address(value)
     except ipaddress.AddressValueError:
