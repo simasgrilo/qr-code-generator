@@ -43,6 +43,16 @@ export default function QRCode( {qrCodeData } : QRCodeStruct) {
             setLoading(false);
         }
     }
+    
+    function downloadHandler() {
+        const downloadLink = document.createElement("a");
+        downloadLink.href = qrCode;
+        downloadLink.download = 'qr-code.png';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+
 
     useEffect(() => {
         if (qrCodeData) {
@@ -54,13 +64,20 @@ export default function QRCode( {qrCodeData } : QRCodeStruct) {
         <div className='mt-6 text-center'>
             {loading && <p>Your QR Code will appear here...</p>}
             {qrCode && 
-            <Image 
-                src={qrCode}
-                alt="QR Code"
-                className="mx-auto border rounded"
-                width='150'
-                height='150'>
-            </Image>}
+            <div className="col-span-3 justify-stretch">
+                <Image 
+                    src={qrCode}
+                    alt="QR Code"
+                    className="mx-auto border rounded"
+                    width='150'
+                    height='150'>
+                </Image> 
+                <button type='submit' onClick={downloadHandler}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    Download
+                </button>
+            </div>
+            }
         </div>
     );
 }

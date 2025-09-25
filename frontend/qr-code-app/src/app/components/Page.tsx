@@ -19,10 +19,8 @@ export default function Page(){
     function createQRCode(formData: FormData) {
         const rawFormData = {
             data : formData.get('qrCodeText') as string,
-            // version : formData.get('version') as string,
-            //version: document.getElementById("versionDropdown")?.title as string,
             version: document.getElementById("versionDropdown")?.textContent as string,
-            errorCorrectionLevel : document.getElementById("versionDropdown")?.textContent as string
+            errorCorrectionLevel : document.getElementById("eclDropdown")?.textContent as string
         }
         setQRCodeInput(rawFormData);
     }
