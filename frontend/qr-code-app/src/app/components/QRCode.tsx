@@ -1,0 +1,66 @@
+"use client";
+import { useState, useEffect } from "react";
+import Image from "next/image";
+
+
+export interface QRCodeStruct {
+    qrCodeData? : {
+        data: string;
+        version: number;
+        errorCorrectionLevel: string;
+    };
+}
+
+export default function QRCode( {qrCodeData } : QRCodeStruct) {
+
+    const [ qrCode, setQRCode ] = useState<string | null>(null);
+    const [ loading, setLoading ] = useState<boolean>(true)
+
+    async function fetchQRCode( data : {
+            data : string,
+            version : number,
+            errorCorrectionLevel: string
+    }) {
+        try {
+            const qrCodeResponse = await fetch("http://localHost:8000/qr", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+            if (!qrCodeResponse.ok) {
+                throw new Error(`Failed to fetch QR Code: status code ${qrCodeResponse.status}, message: ${qrCodeResponse.statusText}`);
+            }
+            const qrCodeBlob = await qrCodeResponse.blob();
+            const qrCodeUrl = URL.createObjectURL(qrCodeBlob);
+            setQRCode(qrCodeUrl);
+        }
+        catch (err) {
+            alert(err);
+        }
+        finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        if (qrCodeData) {
+            fetchQRCode(qrCodeData);
+        }
+    }, [qrCodeData]);
+
+    return (
+        <div className='mt-6 text-center'>
+            {loading && <p>Your QR Code will appear here...</p>}
+            {qrCode && 
+            <Image 
+                src={qrCode}
+                alt="QR Code"
+                className="mx-auto border rounded"
+                width='150'
+                height='150'>
+            </Image>}
+        </div>
+    );
+}

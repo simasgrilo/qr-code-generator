@@ -21,7 +21,7 @@ export default function Dropdown() {
     return (
         <div className="flex justify-center ">
             <div className="relative inline-block text-left">
-                <button type="button" className="inline-flex justify-center w-full rounded-md 
+                <button id="eclDropdown" type="button" className="inline-flex justify-center w-full rounded-md 
                                                  border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-black hover:bg-gray-50"
                                       onClick={toggleDown}>
                 {selectedECL}

@@ -3,7 +3,7 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.app.routes.qr import get_qr_router as qr_router, qr_route_custom_exception_handler, qr_route_custom_exception_handler
+from src.app.routes.qr import get_qr_router as qr_router, qr_route_custom_exception_handler
 from src.app.ratelim.service.rate_limit_config_builder import build_rate_limit_config
 from src.app.config import read_cors_config
 
