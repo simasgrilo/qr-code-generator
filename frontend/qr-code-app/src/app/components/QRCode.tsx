@@ -6,19 +6,19 @@ import Image from "next/image";
 export interface QRCodeStruct {
     qrCodeData? : {
         data: string;
-        version: number;
+        version: string;
         errorCorrectionLevel: string;
     };
 }
 
-export default function QRCode( {qrCodeData } : QRCodeStruct) {
+export default function QRCode( { qrCodeData } : QRCodeStruct) {
 
     const [ qrCode, setQRCode ] = useState<string | null>(null);
     const [ loading, setLoading ] = useState<boolean>(true)
 
     async function fetchQRCode( data : {
             data : string,
-            version : number,
+            version : string,
             errorCorrectionLevel: string
     }) {
         try {
@@ -38,6 +38,7 @@ export default function QRCode( {qrCodeData } : QRCodeStruct) {
         }
         catch (err) {
             alert(err);
+            return;
         }
         finally {
             setLoading(false);
