@@ -4,7 +4,9 @@ import os
 # note: no redis.asyncio here. we need the
 # rate limiter check sync with the app
 from redis import Redis
+from redis.exceptions import ConnectionError
 from src.app.ratelim.service.rate_limiter_intf import RateLimiterInterface
+from src.app.exceptions.data_store_conn_error import DataStoreConnectionError
 
 class RedisManager(RateLimiterInterface):
     """ Utility class to interface with Redis as the underlying data store
@@ -22,7 +24,10 @@ class RedisManager(RateLimiterInterface):
     def set(self, key: str, value: dict):
         """ Method to set the pair (key, value) in the Redis instance
         """
-        self.redis.hset(key, mapping=value)
+        try:
+            self.redis.hset(key, mapping=value)
+        except ConnectionError as exc:
+            raise DataStoreConnectionError from exc
 
     def get(self, key: object):
         """Method to check whether the request will be rate limited,
@@ -32,7 +37,10 @@ class RedisManager(RateLimiterInterface):
             key (object): id of the object to be identified, usually an IP associated with 
                           the requester.
         """
-        return self.redis.hgetall(key)
+        try:
+            return self.redis.hgetall(key)
+        except ConnectionError as exc:
+            raise DataStoreConnectionError from exc
 
     @staticmethod
     def create():
@@ -42,18 +50,29 @@ class RedisManager(RateLimiterInterface):
         Returns:
             RedisManager: Abstraction to manage the Redis interface implementation
         """
-        redis_host = os.getenv("REDIS_HOST")
-        redis_port = os.getenv("REDIS_PORT")
-        username = os.getenv("REDIS_USERNAME")
-        password = os.getenv("REDIS_PASSWORD")
-        return RedisManager(redis_host, redis_port, username, password)
+        try:
+            redis_host = os.getenv("REDIS_HOST")
+            redis_port = os.getenv("REDIS_PORT")
+            username = os.getenv("REDIS_USERNAME")
+            password = os.getenv("REDIS_PASSWORD")
+            return RedisManager(redis_host, redis_port, username, password)
+        except ConnectionError as exc:
+            raise DataStoreConnectionError from exc
 
 class MockRedis(RateLimiterInterface):
+    """Mock class to mimic a key value store but in memory
+       this is only to be used within unit tests!!!
+
+    Args:
+        RateLimiterInterface (object): the interface to describe a rate limiting interface
+                                       any class that functions like the rate limiting class
+                                       needs to implement these methods.
+    """
     def __init__(self):
         self.store = {}
 
     def get(self, key):
         return self.store.get(key)
 
-    def set(self, key, value, ex=None):
+    def set(self, key, value):
         self.store[key] = value

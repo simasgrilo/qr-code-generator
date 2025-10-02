@@ -4,13 +4,36 @@ import uuid #for now, generates the temp file on disk with UUID.
 import os
 import tempfile
 from pathlib import Path
-from fastapi import APIRouter, Depends
+from fastapi import FastAPI, APIRouter, Depends
+from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_503_SERVICE_UNAVAILABLE
 from src.app.models.qr_code_image import QRCodeImage
 from src.app.services.qr_code_service import create_qr_code
 from src.app.ratelim.service.rate_limiter_service import RateLimiterService
 from src.app.ratelim.models.rate_limit_config import RateLimitConfig
+from src.app.exceptions.data_store_conn_error import DataStoreConnectionError
+
+# fix: adding a generic exception handler to deal with the case
+# where a dependency raises an exception. This happens between the
+# endpoint call and the FastAPI instantiation, and FastAPI only 
+# allows custom exception handlers to be attached to the FastAPI instance
+# see https://fastapi.tiangolo.com/tutorial/handling-errors/?h=hand#install-custom-exception-handlers 
+# for more info
+
+def qr_route_custom_exception_handler(app: FastAPI):
+    """Route handler for the FastAPI object
+
+    Args:
+        app (FastAPI): Main API object, denoting our
+    """
+    @app.exception_handler(DataStoreConnectionError)
+    async def datastore_connection_error_handler(request: Request, exception: DataStoreConnectionError):
+        return JSONResponse(
+            status_code=HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+            "message": "An error has occurred! Please try again after a couple of seconds, and reach out the administrator if the problem persists"
+        })
 
 
 def get_qr_router(rate_limiter_config : RateLimitConfig) -> APIRouter:
@@ -18,7 +41,6 @@ def get_qr_router(rate_limiter_config : RateLimitConfig) -> APIRouter:
     FILE_PATH = os.path.join(Path(__file__).parent.parent, "static")
     #rate limiting is set by route, but created elsewhere:
     rate_limiter = RateLimiterService.get_instance(rate_limiter_config.data_store)
-
     @router.post("/qr", dependencies=[Depends(rate_limiter.check_rate_limiting)])
     async def generate_qr_code(payload: QRCodeImage):
         """ Generate a QR Code based on the request data
