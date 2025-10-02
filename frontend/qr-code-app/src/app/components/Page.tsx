@@ -5,22 +5,23 @@ import Dropdown from './Dropdown';
 import ECLDropdown from './ECLDropdown';
 import QRCode from './QRCode';
 import { useState } from 'react';
-
+import { QRCodeStruct } from './interfaces/QRCode';
 
 export default function Page(){
 
-
-    const[qrCodeInput, setQRCodeInput] = useState<{
-        data: string,
-        version: string,
-        errorCorrectionLevel: string
-    } | null>(null);
+    const[qrCodeInput, setQRCodeInput] = useState<QRCodeStruct | null>(null);
 
     function createQRCode(formData: FormData) {
-        const rawFormData = {
+
+        const rawFormData : QRCodeStruct = {
             data : formData.get('qrCodeText') as string,
-            version: document.getElementById("versionDropdown")?.textContent as string || null,
-            errorCorrectionLevel : document.getElementById("eclDropdown")?.textContent as string || null
+            version: document.getElementById("versionDropdown")?.textContent as string,
+            errorCorrectionLevel : document.getElementById("eclDropdown")?.textContent as string
+        }
+        // validatePayload(rawFormData);
+        if (!rawFormData?.data) {
+            alert("Please provide a valid QR code text");
+            return;
         }
         setQRCodeInput(rawFormData);
     }

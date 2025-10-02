@@ -1,15 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-
-
-export interface QRCodeStruct {
-    qrCodeData? : {
-        data: string;
-        version: string;
-        errorCorrectionLevel: string;
-    };
-}
+import { QRCodeStruct } from './interfaces/QRCode';
 
 export default function QRCode( { qrCodeData } : QRCodeStruct) {
 
@@ -18,7 +10,7 @@ export default function QRCode( { qrCodeData } : QRCodeStruct) {
 
     async function fetchQRCode( data : {
             data : string,
-            version : string,
+            version : number,
             errorCorrectionLevel: string
     }) {
         try {

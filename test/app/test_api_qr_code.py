@@ -56,6 +56,20 @@ class TestBasicAPIOperations(unittest.TestCase):
         qr_response = self.client.post("/qr", json=body, headers=self.test_headers )
         self.assertEqual(qr_response.status_code, HTTP_422_UNPROCESSABLE_ENTITY)
 
+    def test_api_call_with_auto_params(self):
+        """Method to test functionality of processing "Auto" parameters
+           which triggers the feature to calculate the minimum version and ECL that
+           fits the QR code text.
+        """
+        super().setUp()
+        body = {
+	        "data": "test code",
+            "version": "Auto",
+            "errorCorrectionLevel": "Auto"
+        }
+        response = self.client.post('/qr', json=body, headers=self.test_headers)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
 class TestAPIRateLimiter(unittest.TestCase):
     """Class to test rate limiting functionalities
 

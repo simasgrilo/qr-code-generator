@@ -5,9 +5,9 @@ import { FaCaretDown } from "react-icons/fa";
 export default function Dropdown() {
     
     const [ isOpen, setIsOpen ] = useState(false);
-    const [ selectedECL, setSelectedVersion ] = useState('Select Error Correction Level');
+    const [ selectedECL, setSelectedVersion ] = useState('Auto');
 
-    const eclList = ['L','H','Q','M'];
+    const eclList = ['Auto','L','H','Q','M'];
 
     const toggleDown = () => {
         setIsOpen(!isOpen);
