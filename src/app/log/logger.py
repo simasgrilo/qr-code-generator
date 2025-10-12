@@ -24,7 +24,7 @@ class Logger:
         rotation = os.getenv("LOG_FILE_ROTATION")
         if not log_directory:
             self.logger.info("missing .env var LOG_FILE. Defaulting to log path logs/app.log")
-            log_directory = os.path.join(Path(__file__), self.DEFAULT_LOG_PATH)
+            log_directory = os.path.join(Path(__file__).parent, self.DEFAULT_LOG_PATH)
         if not rotation:
             self.logger.info("missing .env var LOG_FILE_ROTATION. Defaulting to log path logs/app.log")
             rotation = 'midnight'
@@ -33,12 +33,17 @@ class Logger:
             when=rotation,
             backupCount=7
         )
-        formatter = logging.Formatter(
+        self.formatter = logging.Formatter(
             "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
         )
-        handler.setFormatter(formatter)
+        handler.setFormatter(self.formatter)
         self.logger.addHandler(handler)
 
+    @classmethod
+    def get_instance(cls):
+        if cls.instance is None:
+            cls.instance = Logger()
+        return cls.instance
 
     @classmethod
     def get_logger(cls):
