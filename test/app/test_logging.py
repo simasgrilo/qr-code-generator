@@ -33,8 +33,8 @@ class LoggingUnitTest(unittest.TestCase):
         mock_get_logger.return_value = mock_logger
         # below call is to trigger the constructor of the class defined in logger.py
         Logger()
-        self.assertIn('missing .env var LOG_FILE. Defaulting to log path logs/app.log', [call[0][0] for call in mock_logger.info.call_args_list])
-        self.assertIn("missing .env var LOG_FILE_ROTATION. Defaulting to log path logs/app.log", [call[0][0] for call in mock_logger.info.call_args_list])
+        self.assertIn('missing .env var %s. Defaulting to log path logs/app.log', [call[0][0] for call in mock_logger.info.call_args_list])
+        self.assertIn("missing .env var %s. Defaulting to log path logs/app.log", [call[0][0] for call in mock_logger.info.call_args_list])
 
 
 class TestLoggerRealLoggingOutput(unittest.TestCase):
@@ -68,6 +68,8 @@ class TestLoggerRealLoggingOutput(unittest.TestCase):
         self.assertIn("INFO", log_output)
 
     def test_logger_outputs_error_log(self):
+        """Method to test output in error entries
+        """
         message = "An error occurred"
         self.logger.error(message)
 
