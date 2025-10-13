@@ -6,6 +6,9 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERRO
 from src.app.models.qr_code_image import QRCodeImage
 from src.qr.utils.QRCodeFactory import QRCodeFactory
 from src.qr.error.QRErrorCorrectionLevel import QRErrorCorrectionLevel
+from src.app.log.logger import Logger
+
+
 
 def create_qr_code(qr_code_model: QRCodeImage,
                    version: int | None,
@@ -26,6 +29,7 @@ def create_qr_code(qr_code_model: QRCodeImage,
     Returns:
         File: A File pointer to the QR code generated image
     """
+    logger = Logger.get_logger()
     version = qr_code_model.version
     ecl = qr_code_model.error_correction_level
     data = qr_code_model.data
@@ -37,10 +41,14 @@ def create_qr_code(qr_code_model: QRCodeImage,
             version = calc_version
         encoder = QRCodeFactory.create_qr_code_obj(version, ecl, file_path)
         encoder.create_qr_code(data)
+        logger.info("QR code generation successful")
     except OSError as exc:
+        message = f'error in reading file at {file_path}. Please contact your admin'
+        logger.exception("An error has occurred", message)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f'error in reading file at {file_path}.'
-                                    'Please contact your admin') from exc
+                            detail=message) from exc
     except ValueError as exc:
+        message = f'Bad request. Check your input. Message={str(exc)}'
+        logger.exception("An error has occurred", message)
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                            detail=f'Bad request. Check your input. Message={str(exc)}') from exc
+                            detail=message) from exc

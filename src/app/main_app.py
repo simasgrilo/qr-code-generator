@@ -13,7 +13,7 @@ def create_app(test_config: dict = None) -> FastAPI:
         test_config (dict): A dictionary containing rate limiter config
                         and a mocked data_store for testing.
     """
-    rate_limit_config = build_rate_limit_config(test_config)
+    config = build_rate_limit_config(test_config)
     app = FastAPI()
     qr_route_custom_exception_handler(app)
     allowed_origins = read_cors_config()
@@ -22,7 +22,7 @@ def create_app(test_config: dict = None) -> FastAPI:
                        allow_credentials=True,
                        allow_methods=['*'],
                        allow_headers=['*'])
-    app.include_router(qr_router(rate_limit_config))
+    app.include_router(qr_router(config))
     return app
 
 app = create_app()
