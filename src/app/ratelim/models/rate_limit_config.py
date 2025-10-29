@@ -14,3 +14,4 @@ class RateLimitConfig(BaseModel):
     cooldown_time: float
     num_requests: int
     activity: str
+    max_size: str | None = None
