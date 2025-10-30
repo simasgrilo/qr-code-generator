@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_503_SERVICE_UNAVAILABLE
 from src.app.models.qr_code_image import QRCodeImage
 from src.app.services.qr_code_service import create_qr_code
-from src.app.ratelim.service.rate_limiter_service import RateLimiterService
+from src.app.ratelim.service.rate_limiter import RateLimiter
 from src.app.ratelim.models.rate_limit_config import RateLimitConfig
 from src.app.exceptions.data_store_conn_error import DataStoreConnectionError
 
@@ -36,11 +36,11 @@ def qr_route_custom_exception_handler(app: FastAPI):
         })
 
 
-def get_qr_router(rate_limiter_config : RateLimitConfig) -> APIRouter:
+def  get_qr_router(rate_limiter_config : RateLimitConfig) -> APIRouter:
     router = APIRouter()
     FILE_PATH = os.path.join(Path(__file__).parent.parent, "static")
     #rate limiting is set by route, but created elsewhere:
-    rate_limiter = RateLimiterService.get_instance(rate_limiter_config.data_store)
+    rate_limiter = RateLimiter.get_instance(rate_limiter_config.data_store)
     @router.post("/qr", dependencies=[Depends(rate_limiter.check_rate_limiting)])
     async def generate_qr_code(payload: QRCodeImage):
         """ Generate a QR Code based on the request data
