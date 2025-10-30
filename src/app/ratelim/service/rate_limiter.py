@@ -9,7 +9,7 @@ from src.app.ratelim.models.rate_limit_config import RateLimitConfig
 from src.app.ratelim.service.rate_limiter_intf import RateLimiterInterface
 
 
-class RateLimiterService(RateLimiterInterface):
+class RateLimiter:
     """Concrete class to provide rate limiting functionalities with Redis
        because our API is gonna be free, every user can create up to 20 QR codes per minute
        This can easily be a microsservice but due to team design, we'll stick with a modular
@@ -24,7 +24,7 @@ class RateLimiterService(RateLimiterInterface):
 
     def __new__(cls, rate_limiter_config: RateLimitConfig):
         if cls._instance is None:
-            cls._instance = super(RateLimiterService, cls).__new__(cls)
+            cls._instance = super(RateLimiter, cls).__new__(cls)
         return cls._instance
 
     def __init__(self, rate_limiter_config: RateLimitConfig
@@ -50,7 +50,7 @@ class RateLimiterService(RateLimiterInterface):
         cooldown_time = int(os.getenv("RATE_LIMITER_COOLDOWN"))
         activity = os.getenv("RATE_LIMITER_QR_ACTIVITY")
         rate_limiter_config = RateLimitConfig(data_store=data_store, num_requests=num_requests, cooldown_time=cooldown_time, activity=activity)
-        return RateLimiterService(rate_limiter_config)
+        return RateLimiter(rate_limiter_config)
 
     def get(self, key: str) -> RateLimiterModel | None:
         return self.data_store.get(key)
