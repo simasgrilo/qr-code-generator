@@ -8,7 +8,7 @@ from redis.exceptions import ConnectionError
 from src.app.ratelim.service.rate_limiter_intf import RateLimiterInterface
 from src.app.exceptions.data_store_conn_error import DataStoreConnectionError
 
-class RedisManager(RateLimiterInterface):
+class RedisStore(RateLimiterInterface):
     """ Utility class to interface with Redis as the underlying data store
         required for decoupling and better testability of the Rate limiter
         service
@@ -19,7 +19,11 @@ class RedisManager(RateLimiterInterface):
     """
 
     def __init__(self, redis_host: str, redis_port: int, username: str, password: str):
-        self.redis = Redis(host=redis_host, port=redis_port, decode_responses=True)
+        try:
+            self.redis = Redis(host=redis_host, port=redis_port, decode_responses=True)
+            self.redis.ping()
+        except ConnectionError as exc:
+            raise DataStoreConnectionError from exc
 
     def set(self, key: str, value: dict):
         """ Method to set the pair (key, value) in the Redis instance
@@ -55,11 +59,11 @@ class RedisManager(RateLimiterInterface):
             redis_port = os.getenv("REDIS_PORT")
             username = os.getenv("REDIS_USERNAME")
             password = os.getenv("REDIS_PASSWORD")
-            return RedisManager(redis_host, redis_port, username, password)
+            return RedisStore(redis_host, redis_port, username, password)
         except ConnectionError as exc:
             raise DataStoreConnectionError from exc
 
-class MockRedis(RateLimiterInterface):
+class InMemoryStore(RateLimiterInterface):
     """Mock class to mimic a key value store but in memory
        this is only to be used within unit tests!!!
 

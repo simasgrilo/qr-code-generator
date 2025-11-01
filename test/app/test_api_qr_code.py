@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from starlette.status import HTTP_200_OK, HTTP_429_TOO_MANY_REQUESTS, HTTP_422_UNPROCESSABLE_ENTITY
 from PIL import Image, ImageChops
 from src.app.main_app import create_app as app
-from src.app.ratelim.service.redis_manager import MockRedis
+from src.app.ratelim.service.data_store_manager import InMemoryStore
 
 
 
@@ -22,7 +22,7 @@ class TestBasicAPIOperations(unittest.TestCase):
         self.known_good_image_path = os.path.join(Path(__file__).parent, 'static', 'good_qr_code.png')
         self.test_headers = {"X-Forwarded-For": "127.0.0.1"}
         test_config = {
-            "data_store" : MockRedis(),
+            "data_store" : InMemoryStore(),
             "cooldown_time" : 60,
             "num_requests" : 20,
             "activity" : "qr_code_gen"
@@ -79,7 +79,7 @@ class TestAPIRateLimiter(unittest.TestCase):
     def setUp(self):
         super().setUp()
         test_config = {
-            "data_store" : MockRedis(),
+            "data_store" : InMemoryStore(),
             "cooldown_time" : 60,
             "num_requests" : 20,
             "activity" : "qr_code_gen"
