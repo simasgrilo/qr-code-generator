@@ -1,12 +1,14 @@
 """ Module to create the RateLimitConfig object for test and production app"""
 
 import os
-from typing import Optional, Dict, Any
 import dotenv
+from typing import Optional, Dict, Any
+from redis.exceptions import ConnectionError
 from src.app.ratelim.models.rate_limit_config import RateLimitConfig
-from src.app.ratelim.service.redis_manager import RedisManager, MockRedis
+from src.app.ratelim.service.redis_manager import RedisStore, InMemoryStore
+from src.app.exceptions.data_store_conn_error import DataStoreConnectionError
 
-def build_rate_limit_config(test_config: Optional[Dict[str, Any]]):
+def get_rate_limiter_instance(test_config: Optional[Dict[str, Any]]):
     """ Factory function to create the initialization of dependencies of the app
        specified either in a .env file or for unit testing purposes
 
@@ -19,18 +21,25 @@ def build_rate_limit_config(test_config: Optional[Dict[str, Any]]):
                                              relevant configuration
     """
     if test_config:
-        data_store = MockRedis()
+        data_store = InMemoryStore()
         cooldown_time = int(test_config.get("cooldown_time", 30))
         num_requests = int(test_config.get("num_requests", 10))
         activity = test_config.get("activity", "qr_code_gen")
     else:
         dotenv.load_dotenv()
-        data_store = RedisManager.create()
         cooldown_time = int(os.getenv("RATE_LIMITER_COOLDOWN"))
         num_requests = int(os.getenv("RATE_LIMITER_REQUESTS"))
         activity = os.getenv("RATE_LIMITER_QR_ACTIVITY")
-    rate_limit_config = RateLimitConfig(data_store=data_store,
-                    cooldown_time=cooldown_time,
-                    num_requests=num_requests,
-                    activity=activity)
+        try:
+            data_store = RedisStore.create()
+        except DataStoreConnectionError:
+            # an issue with redis upon getting the instance
+            data_store = {}
+            #data_store = MemoryRateLimiter(rate_limit_config)
+    rate_limit_config = RateLimitConfig(
+        data_store=data_store,
+        cooldown_time=cooldown_time,
+        num_requests=num_requests,
+        activity=activity
+    )
     return rate_limit_config
