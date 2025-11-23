@@ -27,13 +27,13 @@ class RateLimiter:
             cls._instance = super(RateLimiter, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, rate_limiter_config: RateLimitConfig
-                       ):
+    def __init__(self, rate_limiter_config: RateLimitConfig):
         self.data_store = rate_limiter_config.data_store
         self.cooldown_time = rate_limiter_config.cooldown_time
         self.num_requests = rate_limiter_config.num_requests
         self.activity = rate_limiter_config.activity
-        
+        self.max_size = rate_limiter_config.max_size
+
     @classmethod
     def get_instance(cls, data_store: RateLimiterInterface):
         """Factory method to return an instance of
@@ -102,4 +102,4 @@ class RateLimiter:
         new_record = RateLimiterModel(ip=ip,
                                       requests_left=self.num_requests, 
                                       eviction_date=start_cooldown_time)
-        self.set(record_key, new_record.model_dump())
+        self.set(record_key, new_record.model_dump_json())
