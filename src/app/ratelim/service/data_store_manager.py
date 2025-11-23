@@ -3,6 +3,7 @@
 import os
 # note: no redis.asyncio here. we need the
 # rate limiter check sync with the app
+import heapq
 from redis import Redis
 from redis.exceptions import ConnectionError
 from src.app.ratelim.service.rate_limiter_intf import RateLimiterInterface
@@ -72,11 +73,34 @@ class InMemoryStore(RateLimiterInterface):
                                        any class that functions like the rate limiting class
                                        needs to implement these methods.
     """
-    def __init__(self):
+    def __init__(self, memory_cap: int):
         self.store = {}
+        self.memory_cap = memory_cap
+        self.num_keys = 0
+        self.oldest_record = []
 
     def get(self, key):
         return self.store.get(key)
 
     def set(self, key, value):
+        # if self.num_keys >= self.memory_cap:
+        #     # this doesn't look thread safe
+        #     self._clear()
+        # FIX: your current record structure does not work because you can have equal timestamp for two records. So if you use a tuple, the
+        # default behavior of __lt__ of a tuple is to try to compare elements from the left to the right.
+        # transform this to an object and redefine the __lt__ relation...
+        if key not in self.store:
+            self.num_keys += 1
+        heapq.heappush(self.oldest_record, (value["eviction_date"], value))
         self.store[key] = value
+    
+    # def _clear():
+    #     """ Method to run over the map and clear old entries that are greater than the max period of cooldown time
+    #         The idea is to always allow someone to get at least one request, even if this means that one of the users
+    #         will be dropped with their "allowed limit".
+    #     """
+    #     while self.oldest_record:
+    #         old_timestamp, curr_value = heapq.heappop(self.oldest_record)
+    #         if curr_value[]
+        
+        

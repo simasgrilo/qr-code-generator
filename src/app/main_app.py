@@ -4,7 +4,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.app.routes.qr import get_qr_router as qr_router, qr_route_custom_exception_handler
-from src.app.ratelim.service.rate_limit_config_builder import build_rate_limit_config
+from src.app.ratelim.service.rate_limit_config_builder import get_rate_limiter_instance
 from src.app.config import read_cors_config
 
 def create_app(test_config: dict = None) -> FastAPI:
@@ -13,7 +13,7 @@ def create_app(test_config: dict = None) -> FastAPI:
         test_config (dict): A dictionary containing rate limiter config
                         and a mocked data_store for testing.
     """
-    config = build_rate_limit_config(test_config)
+    config = get_rate_limiter_instance(test_config)
     app = FastAPI()
     qr_route_custom_exception_handler(app)
     allowed_origins = read_cors_config()
