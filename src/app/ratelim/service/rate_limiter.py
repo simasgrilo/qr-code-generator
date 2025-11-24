@@ -102,4 +102,4 @@ class RateLimiter:
         new_record = RateLimiterModel(ip=ip,
                                       requests_left=self.num_requests, 
                                       eviction_date=start_cooldown_time)
-        self.set(record_key, new_record.model_dump_json())
+        self.set(record_key, new_record.model_dump())

@@ -64,6 +64,7 @@ class RedisStore(RateLimiterInterface):
         except ConnectionError as exc:
             raise DataStoreConnectionError from exc
 
+import json
 class InMemoryStore(RateLimiterInterface):
     """Mock class to mimic a key value store but in memory
        this is only to be used within unit tests!!!
@@ -82,25 +83,36 @@ class InMemoryStore(RateLimiterInterface):
     def get(self, key):
         return self.store.get(key)
 
-    def set(self, key, value):
-        # if self.num_keys >= self.memory_cap:
-        #     # this doesn't look thread safe
-        #     self._clear()
+    def set(self, key: str, value: dict):
+        """Method to set a value bounded to a key
+           this implementation considers a LRU-like cache policy
+           to avoid having memory overflow if the map gets too big.
+
+        Args:
+            key (str): key of the record being set
+            value (dict): a hash table (dict) having the entries referring to the current user request.
+        """
+        if self.num_keys == self.memory_cap:
+            # this doesn't look thread safe
+            self._clear()
         # FIX: your current record structure does not work because you can have equal timestamp for two records. So if you use a tuple, the
         # default behavior of __lt__ of a tuple is to try to compare elements from the left to the right.
         # transform this to an object and redefine the __lt__ relation...
-        if key not in self.store:
+        elif key not in self.store:
             self.num_keys += 1
-        heapq.heappush(self.oldest_record, (value["eviction_date"], value))
+        heapq.heappush(self.oldest_record, (value["eviction_date"], key))
         self.store[key] = value
     
-    # def _clear():
-    #     """ Method to run over the map and clear old entries that are greater than the max period of cooldown time
-    #         The idea is to always allow someone to get at least one request, even if this means that one of the users
-    #         will be dropped with their "allowed limit".
-    #     """
-    #     while self.oldest_record:
-    #         old_timestamp, curr_value = heapq.heappop(self.oldest_record)
-    #         if curr_value[]
-        
-        
+    def _clear(self):
+        """Method to release the current oldest record based on the value of eviction date and the 
+           current value of eviction date. This uses a "lazy deletion" strategy of the heap,
+           in which we'll only consider valid the entry containing the same eviction date as the one
+           referred to the key
+        """
+        while self.oldest_record:
+            curr_eviction_date, curr_key = heapq.heappop(self.oldest_record)
+            data_for_curr_key = self.get(curr_key)
+            if data_for_curr_key and curr_eviction_date == data_for_curr_key['eviction_date']:
+                del self.store[curr_key]
+                self.num_keys -= 1
+                break

@@ -22,7 +22,7 @@ class TestBasicAPIOperations(unittest.TestCase):
         self.known_good_image_path = os.path.join(Path(__file__).parent, 'static', 'good_qr_code.png')
         self.test_headers = {"X-Forwarded-For": "127.0.0.1"}
         test_config = {
-            "data_store" : InMemoryStore(),
+            "in_memory_cap" : 1200, #InMemoryStore(1200),
             "cooldown_time" : 60,
             "num_requests" : 20,
             "activity" : "qr_code_gen"
@@ -78,14 +78,15 @@ class TestAPIRateLimiter(unittest.TestCase):
     """
     def setUp(self):
         super().setUp()
+        self.data_store_cap = 10
         test_config = {
-            "data_store" : InMemoryStore(),
+            "in_memory_cap" : self.data_store_cap,
             "cooldown_time" : 60,
             "num_requests" : 20,
             "activity" : "qr_code_gen"
         }
         self.client = TestClient(app(test_config))
-        self.rate_limit = test_config.get("num_requests")
+        self.rate_limit = test_config.get("num_requests") or 60
         self.body = {
 	        "data": "test code"
         }
@@ -111,3 +112,10 @@ class TestAPIRateLimiter(unittest.TestCase):
             response = self.client.post("/qr", json=self.body, headers=self.test_headers)
             status = response.status_code
         self.assertEqual(status, HTTP_429_TOO_MANY_REQUESTS)
+        
+    def test_rate_limit_full_in_memory(self):
+        test_headers = {"X-Forwarded-For": "127.0.0.1"}
+        for index in range(self.data_store_cap + 2):
+            response = self.client.post("/qr", json=self.body, headers=test_headers)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            test_headers["X-Forwarded-For"] = f'127.0.{index}.1'
