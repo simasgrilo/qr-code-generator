@@ -12,8 +12,12 @@ fastapi = "^0.115.12"
 pillow = "^11.3.0"
 httpx = "^0.28.1"
 redis = "^6.4.0"
+uvicorn = {extras = ["standard"], version = "^0.38.0"}
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools.packages.find]
+where = ["src"]
