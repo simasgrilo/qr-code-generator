@@ -75,6 +75,8 @@ def  get_qr_router(rate_limiter_config : RateLimitConfig) -> APIRouter:
                 file_data = file_dir.read() # this is a bytes file - readlines will not work here...
             return Response(file_data, media_type='image/png')
         except (OSError, RuntimeError) as exc:
+            print(f'error: ${file_path}')
+            logger.error(f'Error occurred: cannot access ${file_path}')
             return JSONResponse({
                 "message": f'An error has occurred while processing your request: {exc.strerror}'
             }, status_code=HTTP_500_INTERNAL_SERVER_ERROR)
