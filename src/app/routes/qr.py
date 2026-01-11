@@ -13,7 +13,6 @@ from src.app.services.qr_code_service import create_qr_code
 from src.app.ratelim.service.rate_limiter import RateLimiter
 from src.app.ratelim.models.rate_limit_config import RateLimitConfig
 from src.app.exceptions.data_store_conn_error import DataStoreConnectionError
-from src.app.log.logger import Logger
 
 # fix: adding a generic exception handler to deal with the case
 # where a dependency raises an exception. This happens between the
@@ -38,19 +37,8 @@ def qr_route_custom_exception_handler(app: FastAPI):
 
 
 def  get_qr_router(rate_limiter_config : RateLimitConfig) -> APIRouter:
-    logger = Logger.get_logger()
     router = APIRouter()
-    #file_path = os.path.join(Path(__file__).parent.parent, "static")
-    file_path = os.path.join(Path(__file__).parent.parent, "static")
-    try:
-        config_file_path = os.getenv("QR_FILE_PATH")
-        if os.path.isdir(config_file_path):
-            file_path = Path(config_file_path)
-    except OSError:
-        pass
-    except TypeError:
-        logger.info(f'Defaut QR code temp folder is ${file_path}')
-
+    FILE_PATH = os.path.join(Path(__file__).parent.parent, "static")
     #rate limiting is set by route, but created elsewhere:
     rate_limiter = RateLimiter.get_instance(rate_limiter_config.data_store)
     @router.post("/qr", dependencies=[Depends(rate_limiter.check_rate_limiting)])
@@ -67,9 +55,7 @@ def  get_qr_router(rate_limiter_config : RateLimitConfig) -> APIRouter:
         try:
             filename = f'{uuid.uuid4()}'
             file_data = None
-            with tempfile.NamedTemporaryFile(prefix=filename, 
-                                             suffix='.png', 
-                                             dir=file_path) as file_dir:
+            with tempfile.NamedTemporaryFile(prefix=filename, suffix='.png', dir=FILE_PATH) as file_dir:
                 create_qr_code(payload, None, None, file_dir)
                 file_dir.seek(0) # this is required to set the offset to the beginning of the file
                 file_data = file_dir.read() # this is a bytes file - readlines will not work here...
